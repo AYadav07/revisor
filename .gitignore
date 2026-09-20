@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+.mcp.json
+.claude
+/backend/.env
