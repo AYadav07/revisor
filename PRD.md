@@ -1,4 +1,4 @@
-# Prep Tracker — Product Requirements Doc (v1)
+# Revisor — Product Requirements Doc (v1)
 
 ## 1. Problem
 Preparing for interviews (DSA, system design, core CS, company-specific rounds) involves
@@ -22,6 +22,7 @@ scheduling logic — topics get forgotten or revised too late/too early.
 - Dashboard: what's due today/this week, what's overdue, overall progress per course.
 - A minimal in-app admin view: manage users (see all, disable, delete), read-only view of
   any user's courses/progress.
+- A React frontend covering course management, the learn/review flow, and the dashboard.
 
 ## 4. Explicit non-goals for v1
 - No AI-graded self-explanations.
@@ -31,23 +32,31 @@ scheduling logic — topics get forgotten or revised too late/too early.
 - No mobile app — responsive web only.
 - No admin content editing (admin can't edit another user's courses/topics) or user
   impersonation ("login as") — out of scope unless a real need appears.
+- **No password reset / forgot-password flow.** Self-service signup/login only in v1; a
+  user who loses access to their account has no self-service recovery path. Deferred to
+  v2 (would need an email-sending mechanism — SMTP provider, templates — not yet chosen).
+- No topic/subtopic drag-and-drop reordering persistence in v1 — `order_index` exists in
+  the data model, but no dedicated reorder endpoint yet (see API.md).
 
 ## 5. Project name
-Working title: **Revisor** — not fully locked in, revisit if a better name comes up.
+**Revisor** — locked in.
 
 ## 6. V1 milestones
 1. Backend skeleton + entities + migrations (Flyway)
 2. Auth: signup, login, refresh, logout (see SECURITY.md)
-3. Course/Topic/Subtopic CRUD API (with soft delete on Subtopic)
+3. Course/Topic/Subtopic CRUD API (with soft delete on Topic and Subtopic)
 4. Learn + Review endpoints with SM-2 service (unit tested), review-without-learn gated
 5. Dashboard query endpoints (per-user timezone aware)
 6. Admin: user list/disable/delete, read-only cross-user view, admin action log
-7. React frontend (design deferred — see ARCHITECTURE.md §8)
+7. React frontend: course tree view, learn/review flow, dashboard, auth screens
 8. Swagger/OpenAPI, logging, Actuator health checks
-9. Docker Compose + Caddy deployment, CI/CD via GitHub Actions
-10. Deploy a demo instance (hosting platform: decision deferred)
+9. Backend: Docker Compose + Caddy deployment, CI/CD via GitHub Actions
+10. Frontend: Cloudflare Pages deployment on a custom domain
+11. Deploy a demo instance (backend hosting platform: decision deferred)
 
 ## 7. Future (v2+, out of scope now)
 - AI-graded self-explanation on review
 - Mock interview chatbot
 - Shared/team courses between friends
+- Password reset / forgot-password flow (with email delivery)
+- Topic/subtopic drag-and-drop reorder persistence

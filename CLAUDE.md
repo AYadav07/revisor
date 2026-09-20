@@ -2,18 +2,21 @@
 
 Read automatically at the start of every session in this repo. This is a quick-reference
 summary — read the full docs before implementing anything non-trivial:
-`PRD.md` (scope/goals), `ARCHITECTURE.md` (system design), `API.md` (endpoint contract),
-`SECURITY.md` (auth/token/hardening detail), `DEPLOYMENT.md` (infra).
+`PRD.md` (scope/goals), `ARCHITECTURE.md` (system design incl. frontend structure),
+`UI_DESIGN.md` (visual design — theme, colors, components, pages, forms), `API.md`
+(endpoint contract), `SECURITY.md` (auth/token/hardening detail), `DEPLOYMENT.md` (infra
+for both frontend and backend).
 
 ## What this project is
-Prep Tracker (working title "Revisor"): a personal interview-prep app. Organize prep
+Revisor: a personal interview-prep app. Organize prep
 material as Courses → Topics → Subtopics, mark them learned, then revise on an SM-2
 spaced-repetition schedule. Self-signup, multi-user (owner + friends), with a minimal
-admin view.
+admin view. React frontend, Spring Boot backend, deployed as two separate services on
+one custom domain (subdomains).
 
 ## Architecture — modular monolith (ARCHITECTURE.md §1)
 ```
-com.preptracker
+com.revisor
 ├── course/      # course/topic/subtopic entities, repo, service, controller, dto
 ├── review/      # SM-2 logic, review logs, schedule entries
 ├── auth/        # user, JWT (RS256), refresh tokens
@@ -40,10 +43,19 @@ directly.**
   409, no implicit auto-learn.
 - Tokens are RS256 JWTs (access, 15 min) + opaque rotating refresh tokens (14 days,
   hashed in DB), delivered as httpOnly cookies — never localStorage, never HS256.
+- **Frontend and backend live on subdomains of one custom domain** (`app.` / `api.`),
+  required for `SameSite=Strict` cookies to work — don't assume default platform domains.
+- Frontend: Context API + local state for state management (no Redux), TanStack Query for
+  data fetching (no hand-rolled fetch/useEffect for server state), React Router, Tailwind
+  CSS + shadcn/ui for styling, React Hook Form + Zod for every form.
+- **Frontend components are always built from `components/ui/` primitives** (shadcn) —
+  never style a raw HTML element directly. Theme colors/spacing come from the CSS
+  variables in UI_DESIGN.md §2 — never hardcode a hex color or pixel value in a component.
 
 ## Explicitly not used (don't introduce without flagging it)
-Kubernetes, Redis, Lombok. Reasons are in ARCHITECTURE.md/DEPLOYMENT.md — don't add these
-back in "for best practice" without raising it first.
+Kubernetes, Redis, Lombok, Redux, Material UI/other component libraries, CSS-in-JS.
+Reasons are in ARCHITECTURE.md/UI_DESIGN.md/DEPLOYMENT.md — don't add these back in "for
+best practice" without raising it first.
 
 ## Working conventions
 - Implement one milestone/slice at a time (PRD.md §6). Don't build multiple modules in
@@ -53,10 +65,10 @@ back in "for best practice" without raising it first.
   chat before writing code.
 - Testing: pure logic (SM2Calculator, mappers, validators) gets unit tests with no Spring
   context; repositories get Testcontainers integration tests; controllers get MockMvc/full
-  context integration tests covering happy path + main failure mode. See ARCHITECTURE.md
-  §10 for the full table.
-- Frontend design (state management, component structure, routing) is **not yet decided**
-  — don't assume a pattern for it.
+  context integration tests covering happy path + main failure mode; frontend
+  components/hooks get React Testing Library tests. See ARCHITECTURE.md §10 for the full
+  table.
 - Open items live in each doc's "Open items"/"Open questions" section — check before
-  assuming something is settled.
+  assuming something is settled (e.g. backend hosting platform, final domain name, and two
+  admin-delete cascade edge cases are still open).
 - When this file conflicts with the other docs, they win — update this summary to match.
