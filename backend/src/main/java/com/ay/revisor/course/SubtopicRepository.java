@@ -15,6 +15,8 @@ public interface SubtopicRepository extends JpaRepository<Subtopic, Long> {
 
     List<Subtopic> findAllByTopicIdAndUserIdAndDeletedAtIsNullOrderByIdAsc(Long topicId, Long userId);
 
+    List<Subtopic> findAllByTopicIdInAndUserIdAndDeletedAtIsNullOrderByIdAsc(List<Long> topicIds, Long userId);
+
     @Modifying(clearAutomatically = true)
     @Query("""
             update Subtopic s set s.deletedAt = :deletedAt
