@@ -1,13 +1,13 @@
-package com.ay.preploop;
+package com.ay.revisor;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class PreploopApplication {
+public class RevisorApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(PreploopApplication.class, args);
+		SpringApplication.run(RevisorApplication.class, args);
 	}
 
 }

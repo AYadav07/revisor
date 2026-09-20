@@ -1,10 +1,10 @@
-package com.ay.preploop;
+package com.ay.revisor;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class PreploopApplicationTests {
+class RevisorApplicationTests {
 
 	@Test
 	void contextLoads() {
