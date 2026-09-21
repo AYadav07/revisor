@@ -6,7 +6,8 @@ details, DEPLOYMENT.md for the cross-origin/custom-domain implications of cookie
 ## Conventions
 - All endpoints under `/api/v1`.
 - Auth: RS256 JWT access token delivered as an httpOnly cookie, sent automatically by the
-  browser. Refresh token also an httpOnly cookie, scoped to `/api/v1/auth/refresh`.
+  browser. Refresh token also an httpOnly cookie, scoped to `/api/v1/auth` (see SECURITY.md for why
+  not `/auth/refresh`).
   `Secure` is set in production; dropped in the `local`/`dev` Spring profile since local
   dev runs over plain HTTP (see SECURITY.md).
 - List endpoints paginated: `{ "content": [...], "page": 0, "size": 20, "totalElements": 0 }`
@@ -30,9 +31,9 @@ details, DEPLOYMENT.md for the cross-origin/custom-domain implications of cookie
 
 ## Auth
 ```
-POST   /api/v1/auth/signup   { name, email, password, timezone } -> 201
+POST   /api/v1/auth/signup   { name, email, password, timezone } -> 201, returns { id, name, email, role }
 POST   /api/v1/auth/login    { email, password } -> sets access + refresh cookies, returns { user: { id, name, email, role } }
-POST   /api/v1/auth/refresh  -> rotates refresh token, sets new access + refresh cookies
+POST   /api/v1/auth/refresh  -> rotates refresh token, sets new access + refresh cookies, returns { user: { id, name, email, role } }
 POST   /api/v1/auth/logout   -> revokes refresh token server-side, clears cookies
 ```
 `timezone` is an IANA string captured client-side via

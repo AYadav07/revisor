@@ -56,13 +56,22 @@ httpOnly cookies are invisible to `document.cookie`.
 **Production:**
 ```
 Set-Cookie: refreshToken=<value>; HttpOnly; Secure; SameSite=Strict;
-            Path=/api/v1/auth/refresh; Max-Age=1209600
+            Path=/api/v1/auth; Max-Age=1209600
 ```
 - `HttpOnly` — the XSS protection.
 - `Secure` — HTTPS only.
 - `SameSite=Strict` — CSRF defense (cookies are sent automatically by the browser, which
   is the tradeoff of moving off bearer-token-in-header auth).
-- Refresh token cookie scoped narrowly to `Path=/api/v1/auth/refresh`.
+- Refresh token cookie scoped to `Path=/api/v1/auth` — the auth endpoints only, not the whole
+  API. This was originally `/api/v1/auth/refresh`, but a cookie is only sent to URLs under its
+  path, so that would never reach `/auth/logout` and logout couldn't revoke the token
+  server-side. `/api/v1/auth` is the narrowest path that covers both. The access token cookie
+  is `Path=/`.
+- Cookie flags come from `app.cookies.secure` (default `true`; `local`/`dev` set `false`).
+- JWT key pair: `app.jwt.private-key-path` / `public-key-path` (env `JWT_PRIVATE_KEY_PATH` /
+  `JWT_PUBLIC_KEY_PATH`), PKCS#8 / X.509 PEM. The `local` profile alone sets
+  `app.jwt.generate-ephemeral-keys` to mint a throwaway pair per start; any other profile
+  without key paths fails at startup.
 
 **Local/dev profile:** `Secure` is omitted. Local dev runs frontend (`localhost:5173`,
 Vite) and backend (`localhost:8080`, Spring) both over plain HTTP — a `Secure` cookie is

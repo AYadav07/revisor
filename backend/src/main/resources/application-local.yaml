@@ -9,3 +9,13 @@ spring:
   h2:
     console:
       enabled: true
+
+app:
+  jwt:
+    # Local-only convenience: a fresh key pair per start, so tokens don't survive a restart.
+    generate-ephemeral-keys: true
+  cookies:
+    secure: false
+  cors:
+    allowed-origins:
+      - http://localhost:5173
