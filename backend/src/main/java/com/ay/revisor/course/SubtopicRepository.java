@@ -22,7 +22,7 @@ public interface SubtopicRepository extends JpaRepository<Subtopic, Long> {
 
     List<SubtopicRef> findAllByUserIdAndDeletedAtIsNull(Long userId);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             update Subtopic s set s.deletedAt = :deletedAt
             where s.topicId = :topicId and s.deletedAt is null

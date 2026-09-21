@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -49,6 +50,23 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         List<Map<String, String>> errors = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> Map.of("field", error.getField(),
                         "message", String.valueOf(error.getDefaultMessage())))
+                .toList();
+        problem.setProperty("errors", errors);
+        return handleExceptionInternal(ex, problem, headers, status, request);
+    }
+
+    /** Constraint violations on query/path parameters, e.g. {@code @Max} on {@code size}. */
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(HandlerMethodValidationException ex,
+                                                                              HttpHeaders headers,
+                                                                              HttpStatusCode status,
+                                                                              WebRequest request) {
+        ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "validation-failed", "Validation failed",
+                "One or more parameters are invalid");
+        List<Map<String, String>> errors = ex.getParameterValidationResults().stream()
+                .flatMap(result -> result.getResolvableErrors().stream()
+                        .map(error -> Map.of("field", String.valueOf(result.getMethodParameter().getParameterName()),
+                                "message", String.valueOf(error.getDefaultMessage()))))
                 .toList();
         problem.setProperty("errors", errors);
         return handleExceptionInternal(ex, problem, headers, status, request);

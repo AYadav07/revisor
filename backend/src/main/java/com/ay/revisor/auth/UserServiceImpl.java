@@ -44,9 +44,6 @@ class UserServiceImpl implements UserService {
         User user = findUser(userId);
         user.setEnabled(enabled);
         if (!enabled) {
-            // The bulk revoke below clears the persistence context, which would silently discard
-            // this not-yet-flushed change — so flush it first.
-            userRepository.saveAndFlush(user);
             refreshTokenRepository.revokeAllByUserId(userId, now);
         }
         return mapper.toResponse(user);
