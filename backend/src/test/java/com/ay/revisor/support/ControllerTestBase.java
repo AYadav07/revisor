@@ -54,10 +54,21 @@ public abstract class ControllerTestBase {
 
     protected TestUser createUser(String email, Role role, String timezone) {
         User user = userRepository.save(new User("Test " + email, email, "not-a-real-hash", role, true, timezone));
+        return withToken(user.getId(), email, role, timezone);
+    }
+
+    /**
+     * The same user with an access token issued at the clock's current instant. Access tokens live
+     * 15 minutes, so tests that move the clock by hours or days need this before their next call.
+     */
+    protected TestUser withFreshToken(TestUser user) {
+        return withToken(user.id(), user.email(), user.role(), user.timezone());
+    }
+
+    private TestUser withToken(Long id, String email, Role role, String timezone) {
         Instant now = clock.instant();
-        String token = accessTokenIssuer.issue(
-                new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getRole(), true, timezone, now), now);
-        return new TestUser(user.getId(), new Cookie("accessToken", token));
+        String token = accessTokenIssuer.issue(new UserResponse(id, "Test " + email, email, role, true, timezone, now), now);
+        return new TestUser(id, new Cookie("accessToken", token), email, role, timezone);
     }
 
     protected TestUser createUser(String email, Role role) {
@@ -91,6 +102,6 @@ public abstract class ControllerTestBase {
         return JsonPath.<Number>read(result.getResponse().getContentAsString(), "$.id").longValue();
     }
 
-    public record TestUser(Long id, Cookie cookie) {
+    public record TestUser(Long id, Cookie cookie, String email, Role role, String timezone) {
     }
 }
