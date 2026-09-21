@@ -110,7 +110,11 @@ touching these:
 - No content editing on another user's data, no impersonation — out of scope unless a real
   need appears.
 - All admin actions logged to `AdminAction` (who, what, on whom, when) — access to other
-  users' private data should be auditable even at small scale.
+  users' private data should be auditable even at small scale. `admin_user_id` and
+  `target_user_id` are plain historical IDs with **no foreign key** to `app_user` (dropped
+  in V2): a `DELETE_USER` row must keep the deleted user's ID, which an FK with
+  `ON DELETE SET NULL` would erase. An admin cannot disable or delete their own account
+  (409); other admins are not protected.
 
 ## 8. Frontend
 Structural/technical decisions below; visual design (theme, colors, component inventory,
