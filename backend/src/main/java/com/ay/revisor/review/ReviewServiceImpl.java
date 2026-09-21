@@ -2,13 +2,20 @@ package com.ay.revisor.review;
 
 import com.ay.revisor.course.CourseService;
 import com.ay.revisor.shared.ConflictException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -71,5 +78,24 @@ class ReviewServiceImpl implements ReviewService {
 
         return new ReviewResponse(subtopicId, next.easeFactor(), next.intervalDays(), nextReviewDate,
                 next.repetitionCount());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<DueSubtopic> findDue(Long userId, LocalDate onOrBefore, Collection<Long> subtopicIds,
+                                     Pageable pageable) {
+        if (subtopicIds.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, 0);
+        }
+        return scheduleEntryRepository
+                .findAllByUserIdAndNextReviewDateLessThanEqualAndSubtopicIdInOrderByNextReviewDateAscIdAsc(
+                        userId, onOrBefore, subtopicIds, pageable)
+                .map(entry -> new DueSubtopic(entry.getSubtopicId(), entry.getNextReviewDate()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<Long> findLearnedSubtopicIds(Long userId) {
+        return new HashSet<>(learningRecordRepository.findSubtopicIdsByUserId(userId));
     }
 }

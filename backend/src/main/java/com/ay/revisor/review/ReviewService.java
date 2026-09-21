@@ -1,7 +1,13 @@
 package com.ay.revisor.review;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Collection;
+import java.util.Set;
 
 /**
  * Public seam other modules call through — never {@link LearningRecordRepository},
@@ -17,4 +23,15 @@ public interface ReviewService {
     LearnResponse learn(Long userId, Long subtopicId, Instant now, ZoneId userZone);
 
     ReviewResponse review(Long userId, Long subtopicId, ReviewRequest request, Instant now, ZoneId userZone);
+
+    /**
+     * The user's scheduled subtopics due on or before {@code onOrBefore} (overdue included),
+     * oldest first, restricted to {@code subtopicIds}. The caller supplies the live subtopic
+     * IDs so soft-deleted subtopics never count toward pages or totals — this module has no
+     * view of course-module deletion state.
+     */
+    Page<DueSubtopic> findDue(Long userId, LocalDate onOrBefore, Collection<Long> subtopicIds, Pageable pageable);
+
+    /** IDs of every subtopic the user has marked as learned. */
+    Set<Long> findLearnedSubtopicIds(Long userId);
 }

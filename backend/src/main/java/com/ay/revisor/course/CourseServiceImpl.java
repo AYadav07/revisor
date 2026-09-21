@@ -7,8 +7,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -125,6 +130,64 @@ class CourseServiceImpl implements CourseService {
     @Override
     public void deleteSubtopic(Long userId, Long subtopicId) {
         findOwnedSubtopic(userId, subtopicId).setDeletedAt(Instant.now());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<Long> findLiveSubtopicIds(Long userId) {
+        return subtopicRepository.findAllByUserIdAndDeletedAtIsNull(userId).stream()
+                .map(SubtopicRef::getId)
+                .collect(Collectors.toSet());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, SubtopicContext> describeSubtopics(Long userId, Collection<Long> subtopicIds) {
+        if (subtopicIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Subtopic> subtopics = subtopicRepository.findAllByIdInAndUserIdAndDeletedAtIsNull(subtopicIds, userId);
+        if (subtopics.isEmpty()) {
+            return Map.of();
+        }
+        Set<Long> topicIds = subtopics.stream().map(Subtopic::getTopicId).collect(Collectors.toSet());
+        Map<Long, Topic> topicsById = topicRepository.findAllByIdInAndUserIdAndDeletedAtIsNull(topicIds, userId)
+                .stream().collect(Collectors.toMap(Topic::getId, Function.identity()));
+        if (topicsById.isEmpty()) {
+            return Map.of();
+        }
+        Set<Long> courseIds = topicsById.values().stream().map(Topic::getCourseId).collect(Collectors.toSet());
+        Map<Long, Course> coursesById = courseRepository.findAllByIdInAndUserId(courseIds, userId)
+                .stream().collect(Collectors.toMap(Course::getId, Function.identity()));
+
+        Map<Long, SubtopicContext> contexts = new HashMap<>();
+        for (Subtopic subtopic : subtopics) {
+            Topic topic = topicsById.get(subtopic.getTopicId());
+            Course course = topic == null ? null : coursesById.get(topic.getCourseId());
+            if (course != null) {
+                contexts.put(subtopic.getId(), new SubtopicContext(subtopic.getId(), subtopic.getTitle(),
+                        topic.getId(), topic.getTitle(), course.getId(), course.getTitle()));
+            }
+        }
+        return contexts;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CourseSubtopicIds> listCourseSubtopicIds(Long userId) {
+        Map<Long, Long> courseIdByTopicId = topicRepository.findAllByUserIdAndDeletedAtIsNull(userId).stream()
+                .collect(Collectors.toMap(Topic::getId, Topic::getCourseId));
+        Map<Long, Set<Long>> subtopicIdsByCourseId = new HashMap<>();
+        for (SubtopicRef subtopic : subtopicRepository.findAllByUserIdAndDeletedAtIsNull(userId)) {
+            Long courseId = courseIdByTopicId.get(subtopic.getTopicId());
+            if (courseId != null) {
+                subtopicIdsByCourseId.computeIfAbsent(courseId, id -> new HashSet<>()).add(subtopic.getId());
+            }
+        }
+        return courseRepository.findAllByUserIdOrderByIdAsc(userId).stream()
+                .map(course -> new CourseSubtopicIds(course.getId(), course.getTitle(),
+                        subtopicIdsByCourseId.getOrDefault(course.getId(), Set.of())))
+                .toList();
     }
 
     private Map<Long, List<SubtopicNode>> loadSubtopicsByTopicId(Long userId, List<Topic> topics) {

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +17,10 @@ public interface SubtopicRepository extends JpaRepository<Subtopic, Long> {
     List<Subtopic> findAllByTopicIdAndUserIdAndDeletedAtIsNullOrderByIdAsc(Long topicId, Long userId);
 
     List<Subtopic> findAllByTopicIdInAndUserIdAndDeletedAtIsNullOrderByIdAsc(List<Long> topicIds, Long userId);
+
+    List<Subtopic> findAllByIdInAndUserIdAndDeletedAtIsNull(Collection<Long> ids, Long userId);
+
+    List<SubtopicRef> findAllByUserIdAndDeletedAtIsNull(Long userId);
 
     @Modifying(clearAutomatically = true)
     @Query("""
