@@ -75,6 +75,20 @@ class UserServiceImplTest {
     }
 
     @Test
+    void getTimezone_returnsTheUsersZoneId() {
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user(true)));
+
+        assertThat(service.getTimezone(USER_ID)).isEqualTo(java.time.ZoneId.of("Asia/Kolkata"));
+    }
+
+    @Test
+    void getTimezone_throwsNotFound_whenMissing() {
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getTimezone(USER_ID)).isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
     void setEnabled_false_revokesAllOfTheirTokens() {
         User user = user(true);
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));

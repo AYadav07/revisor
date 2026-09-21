@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.ZoneId;
 
 @Service
 @Transactional
@@ -37,6 +38,12 @@ class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public UserResponse getUser(Long userId) {
         return mapper.toResponse(findUser(userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ZoneId getTimezone(Long userId) {
+        return ZoneId.of(findUser(userId).getTimezone());
     }
 
     @Override

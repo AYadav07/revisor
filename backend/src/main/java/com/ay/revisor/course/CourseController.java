@@ -26,9 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 class CourseController {
 
     private final CourseService courseService;
+    private final CourseTreeAssembler treeAssembler;
 
-    CourseController(CourseService courseService) {
+    CourseController(CourseService courseService, CourseTreeAssembler treeAssembler) {
         this.courseService = courseService;
+        this.treeAssembler = treeAssembler;
     }
 
     @PostMapping
@@ -45,8 +47,8 @@ class CourseController {
     }
 
     @GetMapping("/{id}")
-    CourseDetailResponse get(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable Long id) {
-        return courseService.getCourseDetail(user.id(), id);
+    CourseTreeResponse get(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable Long id) {
+        return treeAssembler.assemble(user.id(), id);
     }
 
     @PutMapping("/{id}")

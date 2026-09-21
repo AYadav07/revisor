@@ -99,7 +99,7 @@ class ReviewServiceImplTest {
     void review_usesSm2InitialState_whenNoPriorReviewLogExists() {
         when(learningRecordRepository.findBySubtopicIdAndUserId(SUBTOPIC_ID, USER_ID))
                 .thenReturn(Optional.of(new LearningRecord(SUBTOPIC_ID, USER_ID, NOW)));
-        when(reviewLogRepository.findFirstBySubtopicIdAndUserIdOrderByReviewedAtDesc(SUBTOPIC_ID, USER_ID))
+        when(reviewLogRepository.findFirstBySubtopicIdAndUserIdOrderByReviewedAtDescIdDesc(SUBTOPIC_ID, USER_ID))
                 .thenReturn(Optional.empty());
         when(scheduleEntryRepository.findBySubtopicIdAndUserId(SUBTOPIC_ID, USER_ID))
                 .thenReturn(Optional.of(new ScheduleEntry(SUBTOPIC_ID, USER_ID, LocalDate.of(2026, 9, 22))));
@@ -117,7 +117,7 @@ class ReviewServiceImplTest {
                 .thenReturn(Optional.of(new LearningRecord(SUBTOPIC_ID, USER_ID, NOW)));
         ReviewLog previousLog = new ReviewLog(SUBTOPIC_ID, USER_ID, NOW.minusSeconds(86400), 4,
                 BigDecimal.valueOf(2.60), 1, 1);
-        when(reviewLogRepository.findFirstBySubtopicIdAndUserIdOrderByReviewedAtDesc(SUBTOPIC_ID, USER_ID))
+        when(reviewLogRepository.findFirstBySubtopicIdAndUserIdOrderByReviewedAtDescIdDesc(SUBTOPIC_ID, USER_ID))
                 .thenReturn(Optional.of(previousLog));
         when(scheduleEntryRepository.findBySubtopicIdAndUserId(SUBTOPIC_ID, USER_ID))
                 .thenReturn(Optional.of(new ScheduleEntry(SUBTOPIC_ID, USER_ID, LocalDate.of(2026, 9, 21))));

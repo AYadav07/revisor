@@ -8,9 +8,11 @@ import com.ay.revisor.auth.UserResponse;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -27,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestClockConfig.class)
 public abstract class ControllerTestBase {
 
     @Autowired
@@ -35,6 +38,13 @@ public abstract class ControllerTestBase {
     private UserRepository userRepository;
     @Autowired
     private AccessTokenIssuer accessTokenIssuer;
+    @Autowired
+    protected TestClock clock;
+
+    @BeforeEach
+    void resetClock() {
+        clock.reset();
+    }
 
     /** Deleting users cascades (FK ON DELETE CASCADE) to everything they own. */
     @AfterEach
@@ -42,16 +52,24 @@ public abstract class ControllerTestBase {
         userRepository.deleteAll();
     }
 
-    protected TestUser createUser(String email, Role role) {
-        User user = userRepository.save(new User("Test " + email, email, "not-a-real-hash", role, true, "UTC"));
-        Instant now = Instant.now();
+    protected TestUser createUser(String email, Role role, String timezone) {
+        User user = userRepository.save(new User("Test " + email, email, "not-a-real-hash", role, true, timezone));
+        Instant now = clock.instant();
         String token = accessTokenIssuer.issue(
-                new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getRole(), true, "UTC", now), now);
+                new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getRole(), true, timezone, now), now);
         return new TestUser(user.getId(), new Cookie("accessToken", token));
     }
 
+    protected TestUser createUser(String email, Role role) {
+        return createUser(email, role, "UTC");
+    }
+
     protected TestUser createUser(String email) {
-        return createUser(email, Role.USER);
+        return createUser(email, Role.USER, "UTC");
+    }
+
+    protected TestUser createUserInZone(String email, String timezone) {
+        return createUser(email, Role.USER, timezone);
     }
 
     protected Long createCourse(TestUser owner, String title) throws Exception {
