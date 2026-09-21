@@ -10,7 +10,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -129,6 +131,69 @@ class CourseServiceImplTest {
 
         assertThatThrownBy(() -> service.updateSubtopic(USER_ID, 100L, new SubtopicRequest("t", null)))
                 .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void findLiveSubtopicIds_returnsIdsOfNonDeletedSubtopics() {
+        when(subtopicRepository.findAllByUserIdAndDeletedAtIsNull(USER_ID))
+                .thenReturn(List.of(ref(100L, 10L), ref(101L, 10L)));
+
+        assertThat(service.findLiveSubtopicIds(USER_ID)).containsExactlyInAnyOrder(100L, 101L);
+    }
+
+    @Test
+    void describeSubtopics_joinsSubtopicTopicAndCourseTitles() {
+        Subtopic subtopic = withId(new Subtopic(10L, USER_ID, "L4 vs L7", null), 100L);
+        Topic topic = withId(new Topic(1L, USER_ID, "Load Balancing", 0), 10L);
+        Course course = withId(new Course(USER_ID, "System Design", null), 1L);
+        when(subtopicRepository.findAllByIdInAndUserIdAndDeletedAtIsNull(List.of(100L), USER_ID))
+                .thenReturn(List.of(subtopic));
+        when(topicRepository.findAllByIdInAndUserIdAndDeletedAtIsNull(Set.of(10L), USER_ID)).thenReturn(List.of(topic));
+        when(courseRepository.findAllByIdInAndUserId(Set.of(1L), USER_ID)).thenReturn(List.of(course));
+
+        Map<Long, SubtopicContext> contexts = service.describeSubtopics(USER_ID, List.of(100L));
+
+        assertThat(contexts).containsOnlyKeys(100L);
+        assertThat(contexts.get(100L)).isEqualTo(
+                new SubtopicContext(100L, "L4 vs L7", 10L, "Load Balancing", 1L, "System Design"));
+    }
+
+    @Test
+    void describeSubtopics_skipsQueriesForEmptyInput() {
+        assertThat(service.describeSubtopics(USER_ID, List.of())).isEmpty();
+
+        verify(subtopicRepository, never()).findAllByIdInAndUserIdAndDeletedAtIsNull(any(), any());
+    }
+
+    @Test
+    void listCourseSubtopicIds_groupsLiveSubtopicsUnderTheirCourse_includingEmptyCourses() {
+        Course withSubtopics = withId(new Course(USER_ID, "System Design", null), 1L);
+        Course empty = withId(new Course(USER_ID, "Empty", null), 2L);
+        Topic topic = withId(new Topic(1L, USER_ID, "Load Balancing", 0), 10L);
+        when(courseRepository.findAllByUserIdOrderByIdAsc(USER_ID)).thenReturn(List.of(withSubtopics, empty));
+        when(topicRepository.findAllByUserIdAndDeletedAtIsNull(USER_ID)).thenReturn(List.of(topic));
+        when(subtopicRepository.findAllByUserIdAndDeletedAtIsNull(USER_ID))
+                .thenReturn(List.of(ref(100L, 10L), ref(101L, 10L)));
+
+        List<CourseSubtopicIds> result = service.listCourseSubtopicIds(USER_ID);
+
+        assertThat(result).containsExactly(
+                new CourseSubtopicIds(1L, "System Design", Set.of(100L, 101L)),
+                new CourseSubtopicIds(2L, "Empty", Set.of()));
+    }
+
+    private static SubtopicRef ref(Long id, Long topicId) {
+        return new SubtopicRef() {
+            @Override
+            public Long getId() {
+                return id;
+            }
+
+            @Override
+            public Long getTopicId() {
+                return topicId;
+            }
+        };
     }
 
     private static <T> T withId(T entity, Long id) {
