@@ -41,6 +41,14 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return respond(ex, request, HttpStatus.UNAUTHORIZED, "unauthorized", "Unauthorized", ex.getMessage());
     }
 
+    @ExceptionHandler(TooManyRequestsException.class)
+    ResponseEntity<Object> handleTooManyRequests(TooManyRequestsException ex, WebRequest request) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()));
+        return handleExceptionInternal(ex, problem(HttpStatus.TOO_MANY_REQUESTS, "too-many-requests",
+                "Too many requests", ex.getMessage()), headers, HttpStatus.TOO_MANY_REQUESTS, request);
+    }
+
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
                                                                     HttpHeaders headers, HttpStatusCode status,

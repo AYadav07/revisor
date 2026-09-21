@@ -13,3 +13,20 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Only health is reachable — no env, beans, metrics or heapdump (SECURITY.md: minimal surface).
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+
+logging:
+  pattern:
+    # Every log line carries the request id set by RequestIdFilter (blank outside a request).
+    correlation: "[%X{requestId:-}] "

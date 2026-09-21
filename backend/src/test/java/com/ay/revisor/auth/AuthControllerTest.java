@@ -38,11 +38,14 @@ class AuthControllerTest {
     private UserRepository userRepository;
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
+    @Autowired
+    private AuthRateLimiter rateLimiter;
 
     @AfterEach
     void cleanUp() {
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
+        rateLimiter.clear(); // the limiter is a singleton shared by every test in this context
     }
 
     @Test
@@ -194,6 +197,68 @@ class AuthControllerTest {
                         .header(HttpHeaders.ORIGIN, "http://evil.example")
                         .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void login_isRateLimitedPerEmailWith429AndRetryAfter_evenForValidCredentials() throws Exception {
+        signup();
+        for (int i = 0; i < 5; i++) {
+            mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"email\":\"ann@example.com\",\"password\":\"wrong-password\"}"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists(HttpHeaders.RETRY_AFTER))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://revisor.dev/errors/too-many-requests"))
+                .andExpect(jsonPath("$.status").value(429))
+                .andExpect(jsonPath("$.instance").value("/api/v1/auth/login"));
+        // Another account is untouched.
+        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"someone-else@example.com\",\"password\":\"x\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void login_requestsRejectedByValidationDoNotUseUpAnAttempt() throws Exception {
+        signup();
+        for (int i = 0; i < 10; i++) {
+            mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"\"}"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void signup_isRateLimitedPerClientIp_withoutAffectingOtherAddresses() throws Exception {
+        for (int i = 0; i < 10; i++) {
+            mvc.perform(post("/api/v1/auth/signup").with(fromIp("198.51.100.1")).contentType(MediaType.APPLICATION_JSON)
+                            .content(signupBody("user" + i + "@example.com")))
+                    .andExpect(status().isCreated());
+        }
+
+        mvc.perform(post("/api/v1/auth/signup").with(fromIp("198.51.100.1")).contentType(MediaType.APPLICATION_JSON)
+                        .content(signupBody("one-too-many@example.com")))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists(HttpHeaders.RETRY_AFTER));
+        mvc.perform(post("/api/v1/auth/signup").with(fromIp("198.51.100.2")).contentType(MediaType.APPLICATION_JSON)
+                        .content(signupBody("other-ip@example.com")))
+                .andExpect(status().isCreated());
+    }
+
+    private static org.springframework.test.web.servlet.request.RequestPostProcessor fromIp(String ip) {
+        return request -> {
+            request.setRemoteAddr(ip);
+            return request;
+        };
+    }
+
+    private static String signupBody(String email) {
+        return "{\"name\":\"N\",\"email\":\"" + email + "\",\"password\":\"correct-horse\",\"timezone\":\"UTC\"}";
     }
 
     private void signup() throws Exception {

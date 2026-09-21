@@ -17,4 +17,7 @@ public interface DashboardService {
     Page<DueItemResponse> getDue(Long userId, DueRange range, Instant now, ZoneId userZone, Pageable pageable);
 
     List<CourseProgressResponse> getProgress(Long userId);
+
+    /** The stat-tile numbers; "today" is taken in the caller's timezone. */
+    DashboardSummaryResponse getSummary(Long userId, Instant now, ZoneId userZone);
 }

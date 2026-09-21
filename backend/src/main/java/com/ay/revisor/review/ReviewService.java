@@ -40,6 +40,12 @@ public interface ReviewService {
      */
     Map<Long, LocalDate> findNextReviewDates(Long userId, Collection<Long> subtopicIds);
 
+    /**
+     * Counts of scheduled subtopics due before {@code today} (overdue) and exactly on it,
+     * restricted to {@code subtopicIds} for the same reason as {@link #findDue}.
+     */
+    DueCounts countDue(Long userId, LocalDate today, Collection<Long> subtopicIds);
+
     /** IDs of every subtopic the user has marked as learned. */
     Set<Long> findLearnedSubtopicIds(Long userId);
 }

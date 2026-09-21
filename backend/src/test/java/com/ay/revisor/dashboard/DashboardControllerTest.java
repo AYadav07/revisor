@@ -168,6 +168,61 @@ class DashboardControllerTest extends ControllerTestBase {
     }
 
     @Test
+    void summary_reportsTheStatTiles_excludingDeletedSubtopicsAndOtherUsers() throws Exception {
+        TestUser ann = scheduleFixture("ann@example.com");
+        clock.setInstant(SEP_23);
+        TestUser bob = createUser("bob@example.com");
+
+        // On Sep 23: overdue = the Sep 21 one, dueToday = the Sep 23 one; the soft-deleted Sep 21 one is invisible.
+        // Learned & live: overdue, dueToday, dueTomorrow, farAhead.
+        mvc.perform(get("/api/v1/dashboard/summary").cookie(ann.cookie()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dueToday").value(1))
+                .andExpect(jsonPath("$.overdue").value(1))
+                .andExpect(jsonPath("$.totalLearned").value(4));
+        mvc.perform(get("/api/v1/dashboard/summary").cookie(bob.cookie()))
+                .andExpect(jsonPath("$.dueToday").value(0))
+                .andExpect(jsonPath("$.overdue").value(0))
+                .andExpect(jsonPath("$.totalLearned").value(0));
+    }
+
+    @Test
+    void summary_dueTodayPlusOverdueEqualsTheTodayListTotal() throws Exception {
+        TestUser ann = scheduleFixture("ann@example.com");
+
+        mvc.perform(get("/api/v1/dashboard/due").param("range", "today").cookie(ann.cookie()))
+                .andExpect(jsonPath("$.totalElements").value(2));
+        mvc.perform(get("/api/v1/dashboard/summary").cookie(ann.cookie()))
+                .andExpect(jsonPath("$.dueToday").value(1))
+                .andExpect(jsonPath("$.overdue").value(1));
+    }
+
+    @Test
+    void summary_measuresTodayInTheCallersTimezone() throws Exception {
+        // Honolulu (UTC-10): learned Sep 21 10:00 local -> due Sep 22 local.
+        clock.setInstant(Instant.parse("2026-09-21T20:00:00Z"));
+        TestUser hana = createUserInZone("hana@example.com", "Pacific/Honolulu");
+        learn(hana, createSubtopic(hana, createTopic(hana, createCourse(hana, "C"), "T", 0), "S"));
+
+        clock.setInstant(Instant.parse("2026-09-22T05:00:00Z"));   // Sep 21, 19:00 in Honolulu
+        hana = withFreshToken(hana);
+        mvc.perform(get("/api/v1/dashboard/summary").cookie(hana.cookie()))
+                .andExpect(jsonPath("$.dueToday").value(0))
+                .andExpect(jsonPath("$.overdue").value(0));
+
+        clock.setInstant(Instant.parse("2026-09-22T10:00:00Z"));   // Sep 22, 00:00 in Honolulu
+        hana = withFreshToken(hana);
+        mvc.perform(get("/api/v1/dashboard/summary").cookie(hana.cookie()))
+                .andExpect(jsonPath("$.dueToday").value(1));
+
+        clock.setInstant(Instant.parse("2026-09-22T20:00:00Z"));   // Sep 22, 10:00 -> still today, not yet overdue
+        hana = withFreshToken(hana);
+        mvc.perform(get("/api/v1/dashboard/summary").cookie(hana.cookie()))
+                .andExpect(jsonPath("$.dueToday").value(1))
+                .andExpect(jsonPath("$.overdue").value(0));
+    }
+
+    @Test
     void progress_countsLearnedAndTotalLiveSubtopicsPerCourse_andIgnoresDeletedOnes() throws Exception {
         TestUser ann = scheduleFixture("ann@example.com");
         createCourse(ann, "Brand new");
@@ -199,6 +254,7 @@ class DashboardControllerTest extends ControllerTestBase {
     void endpointsRequireAuthentication() throws Exception {
         mvc.perform(get("/api/v1/dashboard/due")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/dashboard/progress")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/dashboard/summary")).andExpect(status().isUnauthorized());
     }
 
     private void learn(TestUser user, Long subtopic) throws Exception {

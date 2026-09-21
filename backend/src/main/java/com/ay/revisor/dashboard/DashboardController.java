@@ -40,6 +40,12 @@ class DashboardController {
                 userService.getTimezone(user.id()), PageRequest.of(page, size)));
     }
 
+    /** The stat tiles: due today, overdue, and total learned. */
+    @GetMapping("/summary")
+    DashboardSummaryResponse summary(@AuthenticationPrincipal AuthenticatedUser user) {
+        return dashboardService.getSummary(user.id(), clock.instant(), userService.getTimezone(user.id()));
+    }
+
     /** One entry per course, not paginated: the dashboard draws a progress bar for each. */
     @GetMapping("/progress")
     List<CourseProgressResponse> progress(@AuthenticationPrincipal AuthenticatedUser user) {

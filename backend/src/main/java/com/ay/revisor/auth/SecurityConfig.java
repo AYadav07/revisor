@@ -1,5 +1,6 @@
 package com.ay.revisor.auth;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +26,8 @@ class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, AccessTokenVerifier verifier, Clock clock,
-                                             SecurityProblemHandlers problemHandlers) throws Exception {
+                                             SecurityProblemHandlers problemHandlers,
+                                             @Value("${springdoc.api-docs.enabled:true}") boolean apiDocsEnabled) throws Exception {
         return http
                 // CSRF tokens are unnecessary: auth cookies are SameSite=Strict, which is the CSRF defense (SECURITY.md).
                 .csrf(AbstractHttpConfigurer::disable)
@@ -34,10 +36,19 @@ class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(requests -> requests
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/signup", "/api/v1/auth/login",
-                                "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
-                        .anyRequest().authenticated())
+                .authorizeHttpRequests(requests -> {
+                    requests.requestMatchers(HttpMethod.POST, "/api/v1/auth/signup", "/api/v1/auth/login",
+                            "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll();
+                    // Health checks are for the load balancer/orchestrator; nothing else is exposed (see management.* config).
+                    requests.requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll();
+                    if (apiDocsEnabled) {
+                        // Only open while springdoc itself is on; production turns it off, so these paths then fall
+                        // through to anyRequest().authenticated() like everything else.
+                        requests.requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**",
+                                "/swagger-ui.html", "/swagger-ui/**").permitAll();
+                    }
+                    requests.anyRequest().authenticated();
+                })
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(problemHandlers)
                         .accessDeniedHandler(problemHandlers))
@@ -52,6 +63,7 @@ class SecurityConfig {
         cors.setAllowedOrigins(properties.cors().allowedOrigins());
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("Content-Type", "X-Request-Id"));
+        cors.setExposedHeaders(List.of("X-Request-Id", "Retry-After"));
         cors.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", cors);

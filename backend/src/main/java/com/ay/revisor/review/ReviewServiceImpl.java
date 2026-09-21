@@ -97,6 +97,17 @@ class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional(readOnly = true)
+    public DueCounts countDue(Long userId, LocalDate today, Collection<Long> subtopicIds) {
+        if (subtopicIds.isEmpty()) {
+            return new DueCounts(0, 0);
+        }
+        return new DueCounts(
+                scheduleEntryRepository.countByUserIdAndNextReviewDateLessThanAndSubtopicIdIn(userId, today, subtopicIds),
+                scheduleEntryRepository.countByUserIdAndNextReviewDateAndSubtopicIdIn(userId, today, subtopicIds));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<Long, LocalDate> findNextReviewDates(Long userId, Collection<Long> subtopicIds) {
         if (subtopicIds.isEmpty()) {
             return Map.of();

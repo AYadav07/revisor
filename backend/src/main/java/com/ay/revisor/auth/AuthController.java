@@ -1,5 +1,6 @@
 package com.ay.revisor.auth;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,22 +24,27 @@ class AuthController {
     private final AccessTokenIssuer accessTokenIssuer;
     private final AuthCookies cookies;
     private final Clock clock;
+    private final AuthRateLimiter rateLimiter;
 
-    AuthController(AuthService authService, AccessTokenIssuer accessTokenIssuer, AuthCookies cookies, Clock clock) {
+    AuthController(AuthService authService, AccessTokenIssuer accessTokenIssuer, AuthCookies cookies, Clock clock,
+                   AuthRateLimiter rateLimiter) {
         this.authService = authService;
         this.accessTokenIssuer = accessTokenIssuer;
         this.cookies = cookies;
         this.clock = clock;
+        this.rateLimiter = rateLimiter;
     }
 
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
-    AuthUserResponse signup(@Valid @RequestBody SignupRequest request) {
+    AuthUserResponse signup(@Valid @RequestBody SignupRequest request, HttpServletRequest http) {
+        rateLimiter.checkSignup(http.getRemoteAddr());
         return AuthUserResponse.from(authService.signup(request));
     }
 
     @PostMapping("/login")
     ResponseEntity<SessionResponse> login(@Valid @RequestBody LoginRequest request) {
+        rateLimiter.checkLogin(request.email());
         Instant now = clock.instant();
         return session(authService.login(request, now), now);
     }

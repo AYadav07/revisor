@@ -15,6 +15,10 @@ public interface ScheduleEntryRepository extends JpaRepository<ScheduleEntry, Lo
 
     List<ScheduleEntry> findAllByUserIdAndSubtopicIdIn(Long userId, Collection<Long> subtopicIds);
 
+    long countByUserIdAndNextReviewDateAndSubtopicIdIn(Long userId, LocalDate date, Collection<Long> subtopicIds);
+
+    long countByUserIdAndNextReviewDateLessThanAndSubtopicIdIn(Long userId, LocalDate before, Collection<Long> subtopicIds);
+
     Page<ScheduleEntry> findAllByUserIdAndNextReviewDateLessThanEqualAndSubtopicIdInOrderByNextReviewDateAscIdAsc(
             Long userId, LocalDate onOrBefore, Collection<Long> subtopicIds, Pageable pageable);
 }

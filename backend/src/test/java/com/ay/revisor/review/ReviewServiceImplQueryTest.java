@@ -65,6 +65,21 @@ class ReviewServiceImplQueryTest {
     }
 
     @Test
+    void countDue_separatesOverdueFromDueTodayWithinTheGivenSubtopics() {
+        Set<Long> ids = Set.of(100L, 101L);
+        when(scheduleEntryRepository.countByUserIdAndNextReviewDateLessThanAndSubtopicIdIn(USER_ID, TODAY, ids)).thenReturn(4L);
+        when(scheduleEntryRepository.countByUserIdAndNextReviewDateAndSubtopicIdIn(USER_ID, TODAY, ids)).thenReturn(2L);
+
+        assertThat(service.countDue(USER_ID, TODAY, ids)).isEqualTo(new DueCounts(4, 2));
+    }
+
+    @Test
+    void countDue_returnsZerosWithoutQuerying_whenNoSubtopicIds() {
+        assertThat(service.countDue(USER_ID, TODAY, Set.of())).isEqualTo(new DueCounts(0, 0));
+        verifyNoInteractions(scheduleEntryRepository);
+    }
+
+    @Test
     void findNextReviewDates_mapsLearnedSubtopicsToTheirDate_omittingUnlearnedOnes() {
         when(scheduleEntryRepository.findAllByUserIdAndSubtopicIdIn(USER_ID, List.of(100L, 101L)))
                 .thenReturn(List.of(new ScheduleEntry(100L, USER_ID, TODAY.plusDays(3))));

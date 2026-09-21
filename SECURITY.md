@@ -109,6 +109,20 @@ classic brute-force/credential-stuffing surface:
 - `/auth/login`: 5 attempts per email per 15 minutes → 429.
 - `/auth/signup`: looser per-IP limit (~10/hour) against automated account creation.
 
+Implementation notes:
+- **Every** login attempt counts, successful or not, and the email is trimmed and lower-cased
+  first so `Ann@X.com` and `ann@x.com` share one bucket. Requests rejected by validation (400)
+  don't count. Buckets refill in full once the window has passed.
+- The 429 is a Problem Details response with a `Retry-After` header (seconds).
+- Buckets live in size-bounded, expiring caches (Caffeine), so cycling through emails or IPs can't
+  grow memory without limit.
+- **The signup limit keys on the client IP, which only works if the backend sees the real one.**
+  Behind Caddy the socket peer is always Caddy, so the `prod` profile sets
+  `server.forward-headers-strategy: native` to honour `X-Forwarded-For`. That header is only
+  trustworthy if nothing but the proxy can reach the backend port — otherwise a client could
+  spoof it and dodge the limit. The compose file's published `8080` is for local use; in
+  production bind it to the Docker network only.
+
 ## Secrets management
 JWT signing private key, DB credentials: environment variables / local `.env` (gitignored)
 in dev; VPS filesystem with restricted permissions or platform secret store in production
@@ -135,10 +149,24 @@ API). In production: either disabled entirely (`springdoc.api-docs.enabled=false
 behind the same auth/IP restriction as the rest of the app — not left open on a public URL
 by default.
 
+**Decision: disabled in production.** `application-prod.yaml` sets `springdoc.api-docs.enabled` and
+`springdoc.swagger-ui.enabled` to `false`; local/dev serve `/v3/api-docs` and `/swagger-ui.html`.
+The security chain only permits those paths while springdoc is enabled, so in production they are
+ordinary protected URLs (401), not open holes.
+
+## Actuator
+Only `GET /actuator/health` (and the `/liveness` and `/readiness` probes) is exposed, publicly and
+with no component details — enough for Caddy/Docker health checks, nothing about the environment.
+Every other endpoint (`env`, `beans`, `metrics`, `heapdump`, ...) is not exposed at all.
+
 ## Logging discipline
 Never log passwords, JWTs, or refresh tokens (raw or hashed) — applies especially to the
 `auth` module. Request correlation ID (`X-Request-Id`, propagated via MDC) for tracing one
 request's full log trail without needing to log sensitive payloads.
+`RequestIdFilter` runs ahead of Spring Security so even rejected requests are correlated: it keeps a
+caller's `X-Request-Id` only if it matches `[A-Za-z0-9._-]{1,64}` (it goes into logs and a response
+header, so anything else could forge log lines or inject headers), otherwise generates a UUID. The
+id is in every log line as `requestId` and echoed on the response.
 
 ## Open items
 None currently.
