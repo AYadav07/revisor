@@ -112,7 +112,7 @@ CREATE TABLE admin_action (
     admin_user_id  BIGINT REFERENCES app_user (id) ON DELETE SET NULL,
     action         VARCHAR(100) NOT NULL,
     target_user_id BIGINT REFERENCES app_user (id) ON DELETE SET NULL,
-    "timestamp"    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+    timestamp      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_admin_action_admin_user_id ON admin_action (admin_user_id);
