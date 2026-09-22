@@ -6,7 +6,8 @@ details, DEPLOYMENT.md for the cross-origin/custom-domain implications of cookie
 ## Conventions
 - All endpoints under `/api/v1`.
 - Auth: RS256 JWT access token delivered as an httpOnly cookie, sent automatically by the
-  browser. Refresh token also an httpOnly cookie, scoped to `/api/v1/auth/refresh`.
+  browser. Refresh token also an httpOnly cookie, scoped to `/api/v1/auth` (see SECURITY.md for why
+  not `/auth/refresh`).
   `Secure` is set in production; dropped in the `local`/`dev` Spring profile since local
   dev runs over plain HTTP (see SECURITY.md).
 - List endpoints paginated: `{ "content": [...], "page": 0, "size": 20, "totalElements": 0 }`
@@ -25,14 +26,19 @@ details, DEPLOYMENT.md for the cross-origin/custom-domain implications of cookie
   another user returns `404`, never `403`.
 - DTOs: separate request/response shapes, entities never exposed directly, mapped via
   MapStruct.
-- Interactive docs generated from code via springdoc-openapi (`/swagger-ui.html`) —
-  disabled or auth-gated in production.
+- Interactive docs generated from code via springdoc-openapi (`/swagger-ui.html`, spec at
+  `/v3/api-docs`) — served in local/dev, disabled in production.
+- Every response carries an `X-Request-Id` header (a well-formed one sent by the caller is echoed;
+  otherwise the server generates one) for correlating with server logs.
+- Rate limits return `429` Problem Details with a `Retry-After` header (seconds): `/auth/login` 5
+  attempts per email per 15 minutes, `/auth/signup` 10 per IP per hour (see SECURITY.md).
+- `GET /actuator/health` is public and returns only `{ "status": "UP" }`-style output.
 
 ## Auth
 ```
-POST   /api/v1/auth/signup   { name, email, password, timezone } -> 201
+POST   /api/v1/auth/signup   { name, email, password, timezone } -> 201, returns { id, name, email, role }
 POST   /api/v1/auth/login    { email, password } -> sets access + refresh cookies, returns { user: { id, name, email, role } }
-POST   /api/v1/auth/refresh  -> rotates refresh token, sets new access + refresh cookies
+POST   /api/v1/auth/refresh  -> rotates refresh token, sets new access + refresh cookies, returns { user: { id, name, email, role } }
 POST   /api/v1/auth/logout   -> revokes refresh token server-side, clears cookies
 ```
 `timezone` is an IANA string captured client-side via
@@ -110,8 +116,15 @@ POST   /api/v1/subtopics/{id}/review       { quality: 0-5 }
 ## Dashboard
 ```
 GET    /api/v1/dashboard/due?range=today|week   -> paginated, computed in the user's own timezone
-GET    /api/v1/dashboard/progress               -> per-course completion stats
+GET    /api/v1/dashboard/progress               -> per-course completion stats (a plain array, not paginated)
+GET    /api/v1/dashboard/summary                -> { dueToday, overdue, totalLearned } — the stat tiles
 ```
+- `range=week` is a rolling seven days (today plus the next six), not Monday–Sunday. Both ranges
+  include anything overdue. `range` is case-insensitive and defaults to `today`.
+- `/summary`: `dueToday` is subtopics scheduled exactly today, `overdue` strictly before today
+  (so `dueToday + overdue` equals `/due?range=today`'s `totalElements`), and `totalLearned` counts
+  learned subtopics that still exist. "Today" is the caller's own timezone throughout.
+- Soft-deleted subtopics never appear in any dashboard number.
 
 ## Admin (requires ADMIN role — 403 if authenticated as USER)
 ```

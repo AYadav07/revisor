@@ -2,6 +2,7 @@ package com.ay.revisor.dashboard;
 
 import com.ay.revisor.course.CourseService;
 import com.ay.revisor.course.SubtopicContext;
+import com.ay.revisor.review.DueCounts;
 import com.ay.revisor.review.DueSubtopic;
 import com.ay.revisor.review.ReviewService;
 import org.springframework.data.domain.Page;
@@ -60,6 +61,16 @@ class DashboardServiceImpl implements DashboardService {
                         (int) course.subtopicIds().stream().filter(learned::contains).count(),
                         course.subtopicIds().size()))
                 .toList();
+    }
+
+    @Override
+    public DashboardSummaryResponse getSummary(Long userId, Instant now, ZoneId userZone) {
+        LocalDate today = LocalDate.ofInstant(now, userZone);
+        Set<Long> liveSubtopicIds = courseService.findLiveSubtopicIds(userId);
+        DueCounts due = reviewService.countDue(userId, today, liveSubtopicIds);
+        // Learned subtopics that were later soft-deleted no longer count.
+        long totalLearned = reviewService.findLearnedSubtopicIds(userId).stream().filter(liveSubtopicIds::contains).count();
+        return new DashboardSummaryResponse(due.dueToday(), due.overdue(), totalLearned);
     }
 
     private static DueItemResponse toResponse(DueSubtopic item, SubtopicContext context, LocalDate today) {

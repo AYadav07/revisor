@@ -3,6 +3,7 @@ package com.ay.revisor.dashboard;
 import com.ay.revisor.course.CourseService;
 import com.ay.revisor.course.CourseSubtopicIds;
 import com.ay.revisor.course.SubtopicContext;
+import com.ay.revisor.review.DueCounts;
 import com.ay.revisor.review.DueSubtopic;
 import com.ay.revisor.review.ReviewService;
 import org.junit.jupiter.api.BeforeEach;
@@ -101,6 +102,20 @@ class DashboardServiceImplTest {
         Page<DueItemResponse> result = service.getDue(USER_ID, DueRange.TODAY, NOW, ZoneOffset.UTC, PAGE);
 
         assertThat(result.getContent()).extracting(DueItemResponse::subtopicId).containsExactly(100L);
+    }
+
+    @Test
+    void getSummary_usesTheUsersLocalDate_andCountsOnlyLiveLearnedSubtopics() {
+        Set<Long> live = Set.of(100L, 101L);
+        // 2026-09-21T23:30Z is already the 22nd in Asia/Kolkata.
+        when(courseService.findLiveSubtopicIds(USER_ID)).thenReturn(live);
+        when(reviewService.countDue(USER_ID, LocalDate.of(2026, 9, 22), live)).thenReturn(new DueCounts(3, 2));
+        // 999 was learned, then its subtopic was soft-deleted.
+        when(reviewService.findLearnedSubtopicIds(USER_ID)).thenReturn(Set.of(100L, 999L));
+
+        DashboardSummaryResponse summary = service.getSummary(USER_ID, NOW, ZoneId.of("Asia/Kolkata"));
+
+        assertThat(summary).isEqualTo(new DashboardSummaryResponse(2, 3, 1));
     }
 
     @Test

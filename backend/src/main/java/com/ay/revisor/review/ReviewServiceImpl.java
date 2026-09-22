@@ -14,8 +14,10 @@ import java.time.ZoneId;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -62,7 +64,7 @@ class ReviewServiceImpl implements ReviewService {
                         "Subtopic " + subtopicId + " has not been learned yet — call /learn first"));
 
         SM2Calculator.Sm2State previous = reviewLogRepository
-                .findFirstBySubtopicIdAndUserIdOrderByReviewedAtDesc(subtopicId, userId)
+                .findFirstBySubtopicIdAndUserIdOrderByReviewedAtDescIdDesc(subtopicId, userId)
                 .map(log -> new SM2Calculator.Sm2State(log.getEaseFactor(), log.getIntervalDays(), log.getRepetitionCount()))
                 .orElseGet(SM2Calculator::initialState);
 
@@ -91,6 +93,27 @@ class ReviewServiceImpl implements ReviewService {
                 .findAllByUserIdAndNextReviewDateLessThanEqualAndSubtopicIdInOrderByNextReviewDateAscIdAsc(
                         userId, onOrBefore, subtopicIds, pageable)
                 .map(entry -> new DueSubtopic(entry.getSubtopicId(), entry.getNextReviewDate()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DueCounts countDue(Long userId, LocalDate today, Collection<Long> subtopicIds) {
+        if (subtopicIds.isEmpty()) {
+            return new DueCounts(0, 0);
+        }
+        return new DueCounts(
+                scheduleEntryRepository.countByUserIdAndNextReviewDateLessThanAndSubtopicIdIn(userId, today, subtopicIds),
+                scheduleEntryRepository.countByUserIdAndNextReviewDateAndSubtopicIdIn(userId, today, subtopicIds));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, LocalDate> findNextReviewDates(Long userId, Collection<Long> subtopicIds) {
+        if (subtopicIds.isEmpty()) {
+            return Map.of();
+        }
+        return scheduleEntryRepository.findAllByUserIdAndSubtopicIdIn(userId, subtopicIds).stream()
+                .collect(Collectors.toMap(ScheduleEntry::getSubtopicId, ScheduleEntry::getNextReviewDate));
     }
 
     @Override

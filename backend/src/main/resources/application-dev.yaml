@@ -5,3 +5,13 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD}
   flyway:
     locations: classpath:db/migration/postgresql
+
+app:
+  jwt:
+    private-key-path: ${JWT_PRIVATE_KEY_PATH}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH}
+  cookies:
+    secure: false
+  cors:
+    allowed-origins:
+      - http://localhost:5173

@@ -5,7 +5,6 @@ import com.ay.revisor.shared.NotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -20,7 +19,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -77,16 +75,28 @@ class UserServiceImplTest {
     }
 
     @Test
-    void setEnabled_false_flushesUserThenRevokesAllOfTheirTokens() {
+    void getTimezone_returnsTheUsersZoneId() {
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user(true)));
+
+        assertThat(service.getTimezone(USER_ID)).isEqualTo(java.time.ZoneId.of("Asia/Kolkata"));
+    }
+
+    @Test
+    void getTimezone_throwsNotFound_whenMissing() {
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getTimezone(USER_ID)).isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void setEnabled_false_revokesAllOfTheirTokens() {
         User user = user(true);
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
 
         UserResponse response = service.setEnabled(USER_ID, false, NOW);
 
         assertThat(response.enabled()).isFalse();
-        InOrder inOrder = inOrder(userRepository, refreshTokenRepository);
-        inOrder.verify(userRepository).saveAndFlush(user);
-        inOrder.verify(refreshTokenRepository).revokeAllByUserId(USER_ID, NOW);
+        verify(refreshTokenRepository).revokeAllByUserId(USER_ID, NOW);
     }
 
     @Test

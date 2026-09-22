@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -31,6 +32,19 @@ public interface ReviewService {
      * view of course-module deletion state.
      */
     Page<DueSubtopic> findDue(Long userId, LocalDate onOrBefore, Collection<Long> subtopicIds, Pageable pageable);
+
+    /**
+     * Next review date for each of the given subtopics that the user has learned, keyed by
+     * subtopic ID. A subtopic absent from the map is not learned — a LearningRecord and its
+     * ScheduleEntry are always created together, so "has a date" and "learned" are the same fact.
+     */
+    Map<Long, LocalDate> findNextReviewDates(Long userId, Collection<Long> subtopicIds);
+
+    /**
+     * Counts of scheduled subtopics due before {@code today} (overdue) and exactly on it,
+     * restricted to {@code subtopicIds} for the same reason as {@link #findDue}.
+     */
+    DueCounts countDue(Long userId, LocalDate today, Collection<Long> subtopicIds);
 
     /** IDs of every subtopic the user has marked as learned. */
     Set<Long> findLearnedSubtopicIds(Long userId);

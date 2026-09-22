@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.ZoneId;
 
 @Service
 @Transactional
@@ -40,13 +41,16 @@ class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ZoneId getTimezone(Long userId) {
+        return ZoneId.of(findUser(userId).getTimezone());
+    }
+
+    @Override
     public UserResponse setEnabled(Long userId, boolean enabled, Instant now) {
         User user = findUser(userId);
         user.setEnabled(enabled);
         if (!enabled) {
-            // The bulk revoke below clears the persistence context, which would silently discard
-            // this not-yet-flushed change — so flush it first.
-            userRepository.saveAndFlush(user);
             refreshTokenRepository.revokeAllByUserId(userId, now);
         }
         return mapper.toResponse(user);

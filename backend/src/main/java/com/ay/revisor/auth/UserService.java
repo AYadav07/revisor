@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.time.Instant;
+import java.time.ZoneId;
 
 /**
  * User account management — the seam the admin module calls through, never
@@ -17,6 +18,14 @@ public interface UserService {
 
     /** @throws com.ay.revisor.shared.NotFoundException if no such user */
     UserResponse getUser(Long userId);
+
+    /**
+     * The user's own timezone, which is not in the JWT claims, so controllers resolve it here
+     * to pass into date-sensitive services.
+     *
+     * @throws com.ay.revisor.shared.NotFoundException if no such user
+     */
+    ZoneId getTimezone(Long userId);
 
     /**
      * Enables or disables the user. Disabling also revokes all of the user's outstanding

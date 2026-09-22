@@ -16,14 +16,14 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 
     List<RefreshToken> findAllByFamilyId(UUID familyId);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             update RefreshToken r set r.revokedAt = :revokedAt
             where r.familyId = :familyId and r.revokedAt is null
             """)
     int revokeAllByFamilyId(@Param("familyId") UUID familyId, @Param("revokedAt") Instant revokedAt);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             update RefreshToken r set r.revokedAt = :revokedAt
             where r.userId = :userId and r.revokedAt is null

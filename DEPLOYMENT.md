@@ -136,8 +136,20 @@ in mind on the e2-micro's limited local disk — push to object storage promptly
 than accumulating dumps locally.
 
 ## Observability
-Spring Boot Actuator (`/actuator/health`) as the healthcheck endpoint for Caddy/Docker.
-Logback with JSON output in production (`logstash-logback-encoder`); plain text locally.
+Spring Boot Actuator (`/actuator/health`, plus `/actuator/health/liveness` and `/readiness`) as the
+healthcheck endpoint for Caddy/Docker — public, no details; nothing else is exposed.
+JSON logs in production via Spring Boot's built-in structured logging (`logging.structured.format.console:
+ecs`, set in `application-prod.yaml`) rather than `logstash-logback-encoder` — same result, one less
+dependency. Each record carries the `requestId` from the `X-Request-Id` correlation header. Plain text
+locally.
+
+### Production profile (`SPRING_PROFILES_ACTIVE=prod`)
+All environment-specific values come from env vars; the app fails at startup if any is missing:
+`SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`,
+`JWT_PRIVATE_KEY_PATH`, `JWT_PUBLIC_KEY_PATH` (PKCS#8 / X.509 PEM files), and
+`APP_CORS_ALLOWED_ORIGINS` (comma-separated exact origins, e.g. the `app.` subdomain). The compose
+file does not set these yet. `prod` also turns Swagger off, forces `Secure` cookies, and trusts
+`X-Forwarded-For` from the proxy for the signup rate limit — see SECURITY.md.
 Docker's own log driver with rotation configured (`max-size`, `max-file`) — sufficient at
 this scale, no ELK/Grafana Loki needed, and lighter-weight logging matters more on a 1 GB
 instance. Frontend errors: Cloudflare Pages' own build/deploy logs are sufficient at this
