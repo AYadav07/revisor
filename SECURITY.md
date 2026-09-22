@@ -132,6 +132,12 @@ in dev; VPS filesystem with restricted permissions or platform secret store in p
 - `role` column on `User` (`USER`/`ADMIN`), granted **only via a one-time manual Flyway
   migration** promoting a known email — never a self-service or in-app action, since
   nothing in the app should be able to grant itself elevated privileges.
+- **Mechanism:** `backend/src/main/resources/db/migration/admin-bootstrap.sql.template` —
+  copy it into `db/migration/postgresql/` as the next version (e.g. `V3__promote_initial_admin.sql`),
+  fill in the real email, deploy once. It lives outside the migration folders Flyway actually
+  scans and isn't even a `.sql` file, so it can never run on its own; turning it into a real,
+  numbered migration is the deliberate human action. The target account must sign up normally
+  first — this only promotes an existing row, it never creates one.
 - Admin endpoints protected by `@PreAuthorize("hasRole('ADMIN')")`.
 - **Disabling a user (`PATCH .../{id} { enabled: false }`) revokes their entire current
   refresh-token family** (see §Access + refresh tokens) — immediate logout everywhere,
