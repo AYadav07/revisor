@@ -16,7 +16,7 @@ one custom domain (subdomains).
 
 ## Architecture — modular monolith (ARCHITECTURE.md §1)
 ```
-com.revisor
+com.ay.revisor
 ├── course/      # course/topic/subtopic entities, repo, service, controller, dto
 ├── review/      # SM-2 logic, review logs, schedule entries
 ├── auth/        # user, JWT (RS256), refresh tokens
@@ -67,8 +67,12 @@ best practice" without raising it first.
   context; repositories get Testcontainers integration tests; controllers get MockMvc/full
   context integration tests covering happy path + main failure mode; frontend
   components/hooks get React Testing Library tests. See ARCHITECTURE.md §10 for the full
-  table.
+  table. Testcontainers-backed tests are tagged `postgres` and excluded from the default
+  `./gradlew test` run (they need a reachable Docker daemon) — run them explicitly with
+  `./gradlew test -PincludePostgresTests`.
 - Open items live in each doc's "Open items"/"Open questions" section — check before
-  assuming something is settled (e.g. backend hosting platform, final domain name, and two
-  admin-delete cascade edge cases are still open).
+  assuming something is settled. As of this writing the only one left in the whole doc set
+  is the final domain name/registrar (ARCHITECTURE.md §11, DEPLOYMENT.md) — everything else
+  once listed there (backend hosting platform, the two admin-delete cascade edge cases) has
+  since been decided.
 - When this file conflicts with the other docs, they win — update this summary to match.

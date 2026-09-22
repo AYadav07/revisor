@@ -45,8 +45,10 @@ rotated-away token is a strong compromise signal).
   ARCHITECTURE.md §2) is designed for it from the first migration.
 - Logout revokes the refresh token server-side; the access token naturally expires within
   15 minutes — an accepted tradeoff over maintaining an access-token blacklist.
-- Admin-disabling a user (see §Admin role below) also revokes the user's entire current
-  token family, same mechanism as reuse-detection.
+- Admin-disabling a user (see §Admin role below) also revokes *every* refresh token
+  belonging to that user — every family, not just their most recent login, so a second
+  device or browser session doesn't stay logged in after a disable. Uses the same bulk
+  revoke mechanism as reuse-detection, scoped by user rather than by family.
 
 ## Token storage — httpOnly cookies
 **Decision: httpOnly cookies, not localStorage**, for both access and refresh tokens —
@@ -139,9 +141,12 @@ in dev; VPS filesystem with restricted permissions or platform secret store in p
   numbered migration is the deliberate human action. The target account must sign up normally
   first — this only promotes an existing row, it never creates one.
 - Admin endpoints protected by `@PreAuthorize("hasRole('ADMIN')")`.
-- **Disabling a user (`PATCH .../{id} { enabled: false }`) revokes their entire current
-  refresh-token family** (see §Access + refresh tokens) — immediate logout everywhere,
-  not just a block on future logins.
+- **Disabling a user (`PATCH .../{id} { enabled: false }`) revokes every refresh token
+  belonging to them, across every family** (see §Access + refresh tokens) — immediate
+  logout everywhere (every device, every session), not just a block on future logins.
+- **An admin cannot disable or delete their own account** — `409 Conflict`, the same
+  status as the "target still enabled" case below. Other admins are not protected from
+  each other.
 - **Deleting a user requires disabling first** — `DELETE /admin/users/{id}` returns `409
   Conflict` if the user is not already disabled. Once disabled, delete hard-cascades:
   user row, all courses/topics/subtopics, all review history, all refresh tokens for that
