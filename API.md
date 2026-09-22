@@ -10,7 +10,9 @@ details, DEPLOYMENT.md for the cross-origin/custom-domain implications of cookie
   not `/auth/refresh`).
   `Secure` is set in production; dropped in the `local`/`dev` Spring profile since local
   dev runs over plain HTTP (see SECURITY.md).
-- List endpoints paginated: `{ "content": [...], "page": 0, "size": 20, "totalElements": 0 }`
+- List endpoints paginated: `{ "content": [...], "page": 0, "size": 20, "totalElements": 0 }`.
+  Query params `page` (default `0`) and `size` (default `20`, max `100`) — an out-of-range or
+  non-numeric value is a `400` validation error, not a silent clamp.
 - Errors: RFC 7807 Problem Details —
   ```json
   {
@@ -128,7 +130,8 @@ GET    /api/v1/dashboard/summary                -> { dueToday, overdue, totalLea
 
 ## Admin (requires ADMIN role — 403 if authenticated as USER)
 ```
-GET    /api/v1/admin/users                       -> paginated, list/search all users
+GET    /api/v1/admin/users?q=                    -> paginated; q matches name or email,
+                                                     case-insensitively; omit q to list everyone
 PATCH  /api/v1/admin/users/{id}    { enabled: false }
                                     -> also revokes all of the user's outstanding refresh
                                        tokens (whole token family — see SECURITY.md),
@@ -139,9 +142,13 @@ DELETE /api/v1/admin/users/{id}                  -> 409 Conflict unless the user
                                                      the user and all of their courses,
                                                      topics, subtopics, review history and
                                                      refresh tokens
-GET    /api/v1/admin/users/{id}/courses          -> read-only view of that user's courses/progress
+GET    /api/v1/admin/users/{id}/courses          -> paginated read-only view of that user's
+                                                     courses, each with { learnedCount, totalCount }
 ```
-Every admin action is written to the `AdminAction` log (see ARCHITECTURE.md §2).
+An admin cannot `PATCH`/`DELETE` their own account — `409 Conflict`, same as the
+already-disabled case above, so no separate error shape to handle. Every admin action
+(including a plain `GET /admin/users` list/search) is written to the `AdminAction` log
+(see ARCHITECTURE.md §2).
 
 ## Open items
 - None currently — see PRD.md §7 for v2+ scope (password reset, topic reordering, etc.)

@@ -6,9 +6,6 @@ spring:
     password:
   flyway:
     locations: classpath:db/migration/h2
-  h2:
-    console:
-      enabled: true
 
 app:
   jwt:

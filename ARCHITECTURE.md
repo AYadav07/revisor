@@ -13,7 +13,7 @@ coherent domain, a dataset that fits comfortably in a single Postgres instance o
 **Structured as a modular monolith** — grouped by domain feature, so a future extraction
 (if ever needed) is mechanical, not a rewrite:
 ```
-com.revisor
+com.ay.revisor
 ├── course/      # entities, repo, service, controller, dto — course/topic/subtopic
 ├── review/      # SM-2 logic, review logs, schedule entries
 ├── auth/        # user, JWT (RS256), refresh tokens, admin role checks
@@ -98,9 +98,15 @@ touching these:
 - In-app admin view: list/search users, disable/enable, delete; **read-only** view of any
   user's courses/progress (deliberate, scoped exception to "no cross-user visibility").
 - **Disable → revoke.** Disabling a user (`PATCH .../{id} { enabled: false }`) also
-  revokes all of that user's outstanding refresh tokens — specifically, every token
-  sharing their current token family (see SECURITY.md §Access + refresh tokens) — so
-  they're logged out everywhere immediately rather than merely blocked on next refresh.
+  revokes *every* outstanding refresh token belonging to that user — every family, not
+  just their most recent login — so they're logged out everywhere (every device, every
+  session) immediately rather than merely blocked on next refresh. A narrower
+  "just their current family" revoke was considered and rejected: it would leave other
+  concurrent sessions (a second device, a second browser) still logged in after a disable,
+  defeating the point.
+- **An admin cannot disable or delete their own account** — `409 Conflict`, same status as
+  the "target still enabled" case below, so there's no separate error shape for a client
+  to handle. Other admins are not protected from each other.
 - **Delete requires disable first.** `DELETE /admin/users/{id}` returns `409 Conflict`
   unless the target user is already disabled — a deliberate two-step guard against
   accidental data loss. Once disabled, delete hard-cascades: the user row, all their
@@ -113,8 +119,7 @@ touching these:
   users' private data should be auditable even at small scale. `admin_user_id` and
   `target_user_id` are plain historical IDs with **no foreign key** to `app_user` (dropped
   in V2): a `DELETE_USER` row must keep the deleted user's ID, which an FK with
-  `ON DELETE SET NULL` would erase. An admin cannot disable or delete their own account
-  (409); other admins are not protected.
+  `ON DELETE SET NULL` would erase.
 
 ## 8. Frontend
 Structural/technical decisions below; visual design (theme, colors, component inventory,
@@ -164,11 +169,12 @@ page-by-page layout, forms) lives in **UI_DESIGN.md** — read both before build
   domain implication of this).
 
 ## 9. Tech stack
-- Backend: Spring Boot 3 (Java 21), Spring Data JPA, Spring Security, PostgreSQL, Flyway
-- Auth: Nimbus JOSE+JWT (RS256), BCrypt (via Spring Security), Bucket4j (rate limiting)
+- Backend: Spring Boot 4 (Java 25), Spring Data JPA, Spring Security, PostgreSQL, Flyway
+- Auth: Nimbus JOSE+JWT (RS256), BCrypt (via `spring-security-crypto`), Bucket4j (rate limiting)
 - Mapping/validation: MapStruct, Bean Validation — plain Java, no Lombok
 - API docs: springdoc-openapi (Swagger UI, gated/disabled in prod — see SECURITY.md)
-- Observability: Logback (JSON in prod), Spring Boot Actuator (`/actuator/health`)
+- Observability: Spring Boot's structured logging (JSON in prod, see DEPLOYMENT.md),
+  Spring Boot Actuator (`/actuator/health`, `/liveness`, `/readiness` — nothing else exposed)
 - Testing: JUnit 5, Mockito, Testcontainers (see below)
 - Frontend: React + TypeScript, Vite, React Router, TanStack Query, Context API
 - Infra: Docker + Docker Compose (no Kubernetes), Caddy reverse proxy (backend), GCP

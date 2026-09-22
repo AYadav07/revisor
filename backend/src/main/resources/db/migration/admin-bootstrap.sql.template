@@ -1,0 +1,17 @@
+-- Promotes one existing account to ADMIN. This is deliberately NOT a live migration: it sits
+-- outside db/migration/postgresql and db/migration/h2 (the only locations Flyway is configured
+-- to scan — see application-{profile}.yaml), and its .template extension means it isn't even a
+-- .sql file, so Flyway's scanner would ignore it in those folders too. Belt and suspenders,
+-- because the whole point (SECURITY.md "Admin role") is that granting ADMIN must be a deliberate,
+-- one-time, human action — never something the running application can trigger on its own.
+--
+-- To promote your own account:
+--   1. Sign up normally through the app first — the target account must already exist.
+--   2. Copy this file into db/migration/postgresql/ as the next version, e.g.
+--      V3__promote_initial_admin.sql (and into db/migration/h2/ too, with the same version
+--      number, if you also want it applied against the local H2 profile).
+--   3. Replace the email below with the real account you're promoting.
+--   4. Deploy/restart once. Flyway applies it like any other versioned migration, then it's
+--      permanent history — promoting a second admin later means adding a new migration, not
+--      editing this one (Flyway rejects checksum changes to an already-applied migration).
+UPDATE app_user SET role = 'ADMIN' WHERE email = 'replace-with-the-real-admin-email@example.com';
