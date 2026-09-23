@@ -15,6 +15,10 @@ npm run test:watch  # vitest, watch mode
 The backend must be running (see ../backend) — the app calls it directly, no proxy. Its origin
 comes from `VITE_API_URL` (see `.env.example`); unset means `http://localhost:8080`.
 
+To try it locally, start the backend on the in-memory `local` profile (no database or key files
+needed): `cd ../backend && SPRING_PROFILES_ACTIVE=local ./gradlew bootRun`, then `npm run dev`.
+The `local` profile allows the `http://localhost:5173` origin and issues non-`Secure` cookies.
+
 ## Layout
 
 - `src/api/` — the only code that talks HTTP. `client.ts` is the fetch wrapper (cookies, RFC 7807
