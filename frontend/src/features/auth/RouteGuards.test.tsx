@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
-import { authValue, ann } from '@/test/auth'
+import { ann, authValue } from '@/test/auth'
 import { AuthContext, type AuthContextValue } from './AuthContext'
-import { PublicOnly, RequireAuth } from './RouteGuards'
+import { PublicOnly, RequireAuth, RequireRole } from './RouteGuards'
 
 function Where() {
   const location = useLocation()
@@ -26,8 +26,15 @@ function renderAt(path: string, auth: AuthContextValue, state?: unknown) {
           </Route>
           <Route element={<RequireAuth />}>
             <Route path="/private" element={<p>secret page</p>} />
+            <Route element={<RequireRole role="ADMIN" />}>
+              <Route path="/admin" element={<p>admin page</p>} />
+            </Route>
           </Route>
           <Route path="/dashboard" element={<Where />} />
+          {/* Deliberately NOT under RequireAuth, to exercise RequireRole's own behaviour. */}
+          <Route element={<RequireRole role="ADMIN" />}>
+            <Route path="/standalone-admin" element={<p>standalone admin page</p>} />
+          </Route>
         </Routes>
       </MemoryRouter>
     </AuthContext.Provider>,
@@ -82,5 +89,46 @@ describe('PublicOnly', () => {
     })
 
     expect(screen.getByText('at /dashboard')).toBeInTheDocument()
+  })
+})
+
+describe('RequireRole', () => {
+  const admin = { ...ann, role: 'ADMIN' as const }
+
+  it('lets a user with the role through', () => {
+    renderAt('/admin', authValue({ status: 'authenticated', user: admin }))
+
+    expect(screen.getByText('admin page')).toBeInTheDocument()
+  })
+
+  it('shows "Not authorized" — not the page, and not a redirect to login — to a signed-in user without it', () => {
+    renderAt('/admin', authValue({ status: 'authenticated', user: ann }))
+
+    expect(screen.queryByText('admin page')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Not authorized')
+    expect(screen.getByRole('link', { name: 'Back to the dashboard' })).toHaveAttribute('href', '/dashboard')
+  })
+
+  it('still sends a signed-out visitor to /login first, via RequireAuth', () => {
+    renderAt('/admin', authValue({ status: 'unauthenticated' }))
+
+    expect(screen.getByText('at /login from /admin')).toBeInTheDocument()
+  })
+
+  it('waits, rather than declaring anyone unauthorized, while the session is still being restored', () => {
+    renderAt('/admin', authValue({ status: 'loading' }))
+
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  // While loading there is no user yet, so without its own check RequireRole would flash "Not
+  // authorized" at an admin about to be restored. RequireAuth above normally hides that, so this
+  // renders RequireRole on its own to prove it is safe even if the nesting rule is ever broken.
+  it('holds back its own verdict during loading even with no RequireAuth above it', () => {
+    renderAt('/standalone-admin', authValue({ status: 'loading' }))
+
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

@@ -1,8 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { AppShell } from '@/components/AppShell'
+import { PlaceholderPage } from '@/components/PlaceholderPage'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { LoginPage } from '@/features/auth/LoginPage'
-import { PublicOnly, RequireAuth } from '@/features/auth/RouteGuards'
+import { PublicOnly, RequireAuth, RequireRole } from '@/features/auth/RouteGuards'
 import { SignupPage } from '@/features/auth/SignupPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { DEFAULT_AUTHENTICATED_PATH, ROUTES } from '@/routes'
@@ -17,7 +19,14 @@ function App() {
           <Route path={ROUTES.signup} element={<SignupPage />} />
         </Route>
         <Route element={<RequireAuth />}>
-          <Route path={ROUTES.dashboard} element={<DashboardPage />} />
+          <Route element={<AppShell />}>
+            <Route path={ROUTES.dashboard} element={<DashboardPage />} />
+            {/* TEMPORARY placeholders, replaced as each screen is built. */}
+            <Route path={ROUTES.courses} element={<PlaceholderPage title="Courses" />} />
+            <Route element={<RequireRole role="ADMIN" />}>
+              <Route path={ROUTES.adminUsers} element={<PlaceholderPage title="Users" />} />
+            </Route>
+          </Route>
         </Route>
         {/* Anything else: try the landing page, and RequireAuth sends signed-out users to /login. */}
         <Route path="*" element={<Navigate to={DEFAULT_AUTHENTICATED_PATH} replace />} />

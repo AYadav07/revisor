@@ -58,7 +58,8 @@ describe('routing and the sign-in journey', () => {
     renderApp('/dashboard')
 
     expect(await dashboardHeading()).toBeInTheDocument()
-    expect(screen.getByText(/Signed in as Ann/)).toBeInTheDocument()
+    // Who you're signed in as lives in the shell's user menu.
+    expect(screen.getByRole('button', { name: 'Ann' })).toBeInTheDocument()
   })
 
   it('keeps a signed-in user off the login and signup pages', async () => {
@@ -122,7 +123,8 @@ describe('routing and the sign-in journey', () => {
     const user = renderApp('/dashboard')
     await dashboardHeading()
 
-    await user.click(screen.getByRole('button', { name: 'Sign out' }))
+    await user.click(screen.getByRole('button', { name: 'Ann' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
 
     expect(await signInHeading()).toBeInTheDocument()
     expect(api.logout).toHaveBeenCalledTimes(1)
@@ -135,5 +137,34 @@ describe('routing and the sign-in journey', () => {
 
     await dashboardHeading()
     await waitFor(() => expect(api.refresh).toHaveBeenCalledTimes(1))
+  })
+
+  describe('the admin area', () => {
+    const root = { ...ann, id: 2, name: 'Root', email: 'root@example.com', role: 'ADMIN' as const }
+
+    it('is open to an admin, who also sees the Admin link', async () => {
+      api.refresh.mockResolvedValue({ user: root })
+
+      renderApp('/admin/users')
+
+      expect(await screen.findByText('Users', { selector: '[data-slot="card-title"]' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Admin' })).toBeInTheDocument()
+    })
+
+    it('shows a normal user "Not authorized" inside the shell, with no Admin link to click', async () => {
+      api.refresh.mockResolvedValue({ user: ann })
+
+      renderApp('/admin/users')
+
+      expect(await screen.findByText('Not authorized')).toBeInTheDocument()
+      expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument()
+    })
+
+    it('sends a signed-out visitor to /login rather than showing "Not authorized"', async () => {
+      renderApp('/admin/users')
+
+      expect(await signInHeading()).toBeInTheDocument()
+    })
   })
 })
