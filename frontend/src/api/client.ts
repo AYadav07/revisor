@@ -140,7 +140,9 @@ async function send(path: string, options: RequestOptions): Promise<Response> {
     })
   } catch (error) {
     // A cancelled request isn't a failure — TanStack Query aborts superseded ones — so pass it through.
-    if (error instanceof Error && error.name === 'AbortError') {
+    // Matched by name rather than `instanceof Error`: a DOMException from another realm (an iframe,
+    // jsdom) isn't an instance of this realm's Error.
+    if (typeof error === 'object' && error !== null && (error as { name?: unknown }).name === 'AbortError') {
       throw error
     }
     throw new ApiError(0, 'Could not reach the server. Check your connection and try again.')
