@@ -2,14 +2,15 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/revisor}
     username: ${SPRING_DATASOURCE_USERNAME:revisor}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
   flyway:
     locations: classpath:db/migration/postgresql
 
 app:
   jwt:
-    private-key-path: ${JWT_PRIVATE_KEY_PATH}
-    public-key-path: ${JWT_PUBLIC_KEY_PATH}
+#    private-key-path: ${JWT_PRIVATE_KEY_PATH}
+#    public-key-path: ${JWT_PUBLIC_KEY_PATH}
+    generate-ephemeral-keys: true
   cookies:
     secure: false
   cors:

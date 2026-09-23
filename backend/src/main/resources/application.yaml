@@ -2,7 +2,7 @@ spring:
   application:
     name: revisor
   profiles:
-    default: local
+    default: dev
   autoconfigure:
     # We authenticate via JWT cookies, never username/password through Spring's user store.
     # Left on, Boot creates an unused in-memory user and logs its generated password.
