@@ -1,4 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import type { Role } from '@/api'
+import { ForbiddenPage } from '@/components/ForbiddenPage'
 import { PageLoading } from '@/components/PageLoading'
 import { ROUTES } from '@/routes'
 import { redirectTarget } from './redirectTarget'
@@ -14,6 +16,19 @@ export function RequireAuth() {
     // `from` lets the login page send them back to where they were headed.
     return <Navigate to={ROUTES.login} replace state={{ from: location }} />
   }
+  return <Outlet />
+}
+
+/**
+ * Layout route for pages restricted to one role, e.g. /admin/users. Nest it inside RequireAuth.
+ * This only decides what the UI shows: the backend independently answers 403 to anyone without
+ * the role, so bypassing it in the browser gets a user nothing.
+ */
+export function RequireRole({ role }: { role: Role }) {
+  const { status, user } = useAuth()
+
+  if (status === 'loading') return <PageLoading />
+  if (user?.role !== role) return <ForbiddenPage />
   return <Outlet />
 }
 

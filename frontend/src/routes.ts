@@ -3,6 +3,8 @@ export const ROUTES = {
   login: '/login',
   signup: '/signup',
   dashboard: '/dashboard',
+  courses: '/courses',
+  adminUsers: '/admin/users',
 } as const
 
 /** Where a signed-in user lands when nothing more specific was asked for. */
