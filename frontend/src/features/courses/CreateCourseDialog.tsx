@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
-import { ApiError } from '@/api'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,10 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { Form } from '@/components/ui/form'
+import { showApiError } from '@/lib/formErrors'
 import { courseSchema, toCourseRequest, type CourseValues } from './courseSchemas'
+import { CourseFields } from './formFields'
 import { useCreateCourse } from './useCourses'
 
 interface CreateCourseDialogProps {
@@ -50,16 +49,7 @@ export function CreateCourseDialog({ open, onOpenChange }: CreateCourseDialogPro
         toast.success(`Created “${course.title}”`)
         handleOpenChange(false)
       },
-      onError: (error) => {
-        if (error instanceof ApiError && error.status === 400) {
-          const { title, description } = error.fieldErrors
-          if (title) form.setError('title', { type: 'server', message: title })
-          if (description) form.setError('description', { type: 'server', message: description })
-          if (!title && !description) setFormError(error.message)
-        } else {
-          setFormError(error instanceof ApiError && error.status === 0 ? error.message : GENERIC_ERROR)
-        }
-      },
+      onError: (error) => showApiError(error, form, ['title', 'description'], setFormError, GENERIC_ERROR),
     })
   }
 
@@ -79,32 +69,7 @@ export function CreateCourseDialog({ open, onOpenChange }: CreateCourseDialogPro
                 <AlertDescription>{formError}</AlertDescription>
               </Alert>
             )}
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input autoComplete="off" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description (optional)</FormLabel>
-                  <FormControl>
-                    <Textarea rows={3} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <CourseFields control={form.control} />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancel
