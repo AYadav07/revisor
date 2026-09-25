@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { formatLocalDate, todayLocalIso } from './date'
+import { formatLocalDate, formatTimestampDate, todayLocalIso } from './date'
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -45,5 +45,20 @@ describe('todayLocalIso', () => {
     expect(todayLocalIso(new Date(2026, 8, 26)) >= '2026-09-26').toBe(true)
     expect(todayLocalIso(new Date(2026, 8, 26)) >= '2026-09-27').toBe(false)
     expect(todayLocalIso(new Date(2026, 8, 26)) >= '2025-12-31').toBe(true)
+  })
+})
+
+describe('formatTimestampDate', () => {
+  it('formats a timestamp as a short date', () => {
+    vi.stubEnv('TZ', 'UTC')
+    expect(formatTimestampDate('2026-09-20T10:15:00Z')).toMatch(/Sep\D+20\D+2026/)
+  })
+
+  it('shows the date in the viewer\'s own timezone', () => {
+    // 23:30 UTC on the 20th is already the 21st in Kolkata, and still the 20th in Los Angeles.
+    vi.stubEnv('TZ', 'Asia/Kolkata')
+    expect(formatTimestampDate('2026-09-20T23:30:00Z')).toMatch(/Sep\D+21\D+2026/)
+    vi.stubEnv('TZ', 'America/Los_Angeles')
+    expect(formatTimestampDate('2026-09-20T23:30:00Z')).toMatch(/Sep\D+20\D+2026/)
   })
 })

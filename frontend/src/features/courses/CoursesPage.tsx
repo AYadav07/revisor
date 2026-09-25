@@ -7,15 +7,10 @@ import { Pagination } from '@/components/Pagination'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { pageFromSearch } from '@/lib/pageParam'
 import { CourseCard } from './CourseCard'
 import { CreateCourseDialog } from './CreateCourseDialog'
 import { COURSES_PAGE_SIZE, useCourses } from './useCourses'
-
-/** The page number lives in the URL (?page=2, one-based) so refresh, back and shared links all work. */
-function pageFromSearch(value: string | null): number {
-  const parsed = Number.parseInt(value ?? '', 10)
-  return Number.isFinite(parsed) && parsed >= 1 ? parsed - 1 : 0
-}
 
 const GRID = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3'
 

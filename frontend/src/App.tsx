@@ -1,11 +1,11 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
-import { PlaceholderPage } from '@/components/PlaceholderPage'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/features/auth/AuthProvider'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { PublicOnly, RequireAuth, RequireRole } from '@/features/auth/RouteGuards'
 import { SignupPage } from '@/features/auth/SignupPage'
+import { UsersPage } from '@/features/admin/UsersPage'
 import { CourseDetailPage } from '@/features/courses/CourseDetailPage'
 import { CoursesPage } from '@/features/courses/CoursesPage'
 import { ReviewPage } from '@/features/review/ReviewPage'
@@ -27,9 +27,8 @@ function App() {
             <Route path={ROUTES.courses} element={<CoursesPage />} />
             <Route path={ROUTES.courseDetail} element={<CourseDetailPage />} />
             <Route path={ROUTES.review} element={<ReviewPage />} />
-            {/* TEMPORARY placeholder, replaced when the admin screen is built. */}
             <Route element={<RequireRole role="ADMIN" />}>
-              <Route path={ROUTES.adminUsers} element={<PlaceholderPage title="Users" />} />
+              <Route path={ROUTES.adminUsers} element={<UsersPage />} />
             </Route>
           </Route>
         </Route>
