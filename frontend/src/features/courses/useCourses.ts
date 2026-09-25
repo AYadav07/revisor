@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { courseApi, type CourseRequest } from '@/api'
+import { dashboardKeys } from '@/features/dashboard/queryKeys'
 import { courseKeys } from './queryKeys'
 
 /** Courses per page on the list screen: three columns of four rows. Well under the backend's cap of 100. */
@@ -22,7 +23,11 @@ export function useCreateCourse() {
     mutationFn: (request: CourseRequest) => courseApi.createCourse(request),
     // A new course changes `totalElements` and possibly which courses fall on which page, so every
     // cached page of the list is stale, not just the visible one.
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: courseKeys.lists() }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: courseKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
+      ]),
   })
 }
 
@@ -35,6 +40,7 @@ export function useUpdateCourse(courseId: number) {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) }),
         queryClient.invalidateQueries({ queryKey: courseKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
       ]),
   })
 }
@@ -48,6 +54,10 @@ export function useDeleteCourse(courseId: number) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => courseApi.deleteCourse(courseId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: courseKeys.lists() }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: courseKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
+      ]),
   })
 }

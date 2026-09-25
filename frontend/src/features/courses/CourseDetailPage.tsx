@@ -6,10 +6,11 @@ import { PageHeader } from '@/components/PageHeader'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { parseIdParam } from '@/lib/ids'
 import { ROUTES } from '@/routes'
 import { AddSubtopicDialog } from './AddSubtopicDialog'
 import { AddTopicForm } from './AddTopicForm'
-import { courseProgress, nextTopicOrderIndex, parseCourseId, type TreeAction } from './courseTree'
+import { courseProgress, nextTopicOrderIndex, type TreeAction } from './courseTree'
 import { DeleteCourseDialog, DeleteSubtopicDialog, DeleteTopicDialog } from './DeleteDialogs'
 import { EditCourseDialog } from './EditCourseDialog'
 import { EditSubtopicDialog } from './EditSubtopicDialog'
@@ -30,7 +31,7 @@ function BackToCourses() {
 
 /** One course: its topics and subtopics, in one fetch, with the controls to grow and start them. */
 export function CourseDetailPage() {
-  const courseId = parseCourseId(useParams().id)
+  const courseId = parseIdParam(useParams().id)
   const { data: tree, isPending, isError, error, refetch, isFetching } = useCourseTree(courseId)
   const [action, setAction] = useState<TreeAction | null>(null)
   const closeAction = () => setAction(null)

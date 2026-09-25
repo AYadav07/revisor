@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CourseTree, SubtopicTreeNode, TopicTreeNode } from '@/api'
-import { courseProgress, nextTopicOrderIndex, parseCourseId, topicProgress } from './courseTree'
+import { courseProgress, nextTopicOrderIndex, topicProgress } from './courseTree'
 
 const sub = (id: number, learned: boolean): SubtopicTreeNode => ({
   id,
@@ -14,23 +14,6 @@ const topic = (id: number, orderIndex: number, subtopics: SubtopicTreeNode[] = [
   title: `T${id}`,
   orderIndex,
   subtopics,
-})
-
-describe('parseCourseId', () => {
-  it.each([
-    ['1', 1],
-    ['42', 42],
-    ['9007199254740991', Number.MAX_SAFE_INTEGER],
-  ])('accepts %s', (param, expected) => {
-    expect(parseCourseId(param)).toBe(expected)
-  })
-
-  it.each([undefined, '', 'abc', '0', '-3', '1.5', '007', ' 1', '1 ', '1e3', '9007199254740993'])(
-    'rejects %j',
-    (param) => {
-      expect(parseCourseId(param)).toBeNull()
-    },
-  )
 })
 
 describe('progress', () => {

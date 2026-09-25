@@ -8,6 +8,7 @@ import { PublicOnly, RequireAuth, RequireRole } from '@/features/auth/RouteGuard
 import { SignupPage } from '@/features/auth/SignupPage'
 import { CourseDetailPage } from '@/features/courses/CourseDetailPage'
 import { CoursesPage } from '@/features/courses/CoursesPage'
+import { ReviewPage } from '@/features/review/ReviewPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { DEFAULT_AUTHENTICATED_PATH, ROUTES } from '@/routes'
 
@@ -25,6 +26,7 @@ function App() {
             <Route path={ROUTES.dashboard} element={<DashboardPage />} />
             <Route path={ROUTES.courses} element={<CoursesPage />} />
             <Route path={ROUTES.courseDetail} element={<CourseDetailPage />} />
+            <Route path={ROUTES.review} element={<ReviewPage />} />
             {/* TEMPORARY placeholder, replaced when the admin screen is built. */}
             <Route element={<RequireRole role="ADMIN" />}>
               <Route path={ROUTES.adminUsers} element={<PlaceholderPage title="Users" />} />
