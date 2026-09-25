@@ -6,6 +6,7 @@ import { AuthProvider } from '@/features/auth/AuthProvider'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { PublicOnly, RequireAuth, RequireRole } from '@/features/auth/RouteGuards'
 import { SignupPage } from '@/features/auth/SignupPage'
+import { CoursesPage } from '@/features/courses/CoursesPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { DEFAULT_AUTHENTICATED_PATH, ROUTES } from '@/routes'
 
@@ -21,8 +22,9 @@ function App() {
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route path={ROUTES.dashboard} element={<DashboardPage />} />
+            <Route path={ROUTES.courses} element={<CoursesPage />} />
             {/* TEMPORARY placeholders, replaced as each screen is built. */}
-            <Route path={ROUTES.courses} element={<PlaceholderPage title="Courses" />} />
+            <Route path={ROUTES.courseDetail} element={<PlaceholderPage title="Course" />} />
             <Route element={<RequireRole role="ADMIN" />}>
               <Route path={ROUTES.adminUsers} element={<PlaceholderPage title="Users" />} />
             </Route>
