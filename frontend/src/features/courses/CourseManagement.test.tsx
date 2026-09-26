@@ -1,10 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
 import { toast } from 'sonner'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, courseApi, type CourseTree } from '@/api'
 import { LocationProbe } from '@/test/LocationProbe'
 import { renderWithProviders } from '@/test/render'
+import { dashboardKeys } from '@/features/dashboard/queryKeys'
 import { CourseDetailPage } from './CourseDetailPage'
 import { courseKeys } from './queryKeys'
 
@@ -54,7 +55,14 @@ function problem(errors: { field: string; message: string }[]) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Fixtures use fixed dates; pin "today" so which subtopics count as due never depends on the real date.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 8, 26, 12))
   courses.getCourse.mockResolvedValue(makeTree())
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 function renderPage() {
@@ -122,6 +130,7 @@ describe('editing the course', () => {
     courses.updateCourse.mockResolvedValue({} as never)
     const { user, queryClient } = renderPage()
     queryClient.setQueryData(courseKeys.list({ page: 0, size: 12 }), { content: [] })
+    queryClient.setQueryData([...dashboardKeys.all, 'due'], { content: [] })
     const dialog = await courseAction(user, 'Edit course')
 
     const title = within(dialog).getByLabelText('Title')
@@ -135,6 +144,8 @@ describe('editing the course', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Systems' })).toBeInTheDocument()
     expect(toast.success).toHaveBeenCalledWith('Course updated')
     expect(queryClient.getQueryState(courseKeys.list({ page: 0, size: 12 }))?.isInvalidated).toBe(true)
+    // The due list shows the course's title.
+    expect(queryClient.getQueryState([...dashboardKeys.all, 'due'])?.isInvalidated).toBe(true)
   })
 
   it('rejects a blank title without calling the API', async () => {
@@ -210,11 +221,13 @@ describe('deleting the course', () => {
     courses.deleteCourse.mockResolvedValue(undefined)
     const { user, queryClient } = renderPage()
     queryClient.setQueryData(courseKeys.list({ page: 0, size: 12 }), { content: [] })
+    queryClient.setQueryData([...dashboardKeys.all, 'progress'], [])
     const dialog = await courseAction(user, 'Delete course')
 
     await user.click(within(dialog).getByRole('button', { name: 'Delete course' }))
 
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/courses'))
+    await waitFor(() => expect(queryClient.getQueryState([...dashboardKeys.all, 'progress'])?.isInvalidated).toBe(true))
     expect(screen.getByTestId('location')).not.toHaveTextContent('/courses/7')
     expect(courses.deleteCourse).toHaveBeenCalledWith(7)
     expect(toast.success).toHaveBeenCalledWith('Deleted “System Design”')
@@ -354,12 +367,14 @@ describe('deleting a topic', () => {
   it('deletes it, refreshes the tree and confirms', async () => {
     courses.getCourse.mockResolvedValueOnce(makeTree()).mockResolvedValue(withoutCaching())
     courses.deleteTopic.mockResolvedValue(undefined)
-    const { user } = renderPage()
+    const { user, queryClient } = renderPage()
+    queryClient.setQueryData([...dashboardKeys.all, 'progress'], [])
     const dialog = await topicAction(user, 'Caching', 'Delete topic')
 
     await user.click(within(dialog).getByRole('button', { name: 'Delete topic' }))
 
     await waitFor(() => expect(courses.deleteTopic).toHaveBeenCalledWith(11))
+    await waitFor(() => expect(queryClient.getQueryState([...dashboardKeys.all, 'progress'])?.isInvalidated).toBe(true))
     await closed()
     await waitFor(() => expect(screen.queryByRole('button', { name: /Caching/ })).not.toBeInTheDocument())
     expect(screen.getByRole('button', { name: /Load balancing/ })).toBeInTheDocument()
@@ -426,7 +441,8 @@ describe('editing a subtopic', () => {
     after.topics[0].subtopics[1] = { ...after.topics[0].subtopics[1], title: 'Rendezvous hashing' }
     courses.getCourse.mockResolvedValueOnce(makeTree()).mockResolvedValue(after)
     courses.updateSubtopic.mockResolvedValue({} as never)
-    const { user } = renderPage()
+    const { user, queryClient } = renderPage()
+    queryClient.setQueryData(courseKeys.subtopic(101), { id: 101, notes: 'old notes' })
     const dialog = await subtopicAction(user, 'Edit', 'Consistent hashing')
 
     const title = within(dialog).getByLabelText('Title')
@@ -440,6 +456,8 @@ describe('editing a subtopic', () => {
     await closed()
     expect(await screen.findByText('Rendezvous hashing')).toBeInTheDocument()
     expect(toast.success).toHaveBeenCalledWith('Subtopic updated')
+    // The review screen's cached copy of the notes must not outlive the edit.
+    expect(queryClient.getQueryState(courseKeys.subtopic(101))?.isInvalidated).toBe(true)
   })
 
   it('can clear the notes', async () => {

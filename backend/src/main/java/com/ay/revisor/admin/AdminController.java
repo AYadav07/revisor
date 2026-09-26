@@ -4,6 +4,8 @@ import com.ay.revisor.auth.UserResponse;
 import com.ay.revisor.shared.AuthenticatedUser;
 import com.ay.revisor.shared.PageResponse;
 import com.ay.revisor.shared.Paging;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -29,6 +31,7 @@ import java.time.Clock;
  * recorded in the admin action log by {@link AdminService}. Non-admins get 403 — the one place
  * the API answers 403 rather than 404, because the endpoints themselves are not secret.
  */
+@Tag(name = "Admin", description = "ADMIN role only (403 otherwise). Every call is written to the admin action log.")
 @RestController
 @RequestMapping("/api/v1/admin/users")
 @PreAuthorize("hasRole('ADMIN')")
@@ -43,6 +46,7 @@ class AdminController {
     }
 
     /** {@code q} matches name or email, case-insensitively; omit it to list everyone. */
+    @Operation(summary = "List or search users", description = "q matches name or email, case-insensitively.")
     @GetMapping
     PageResponse<UserResponse> list(@AuthenticationPrincipal AuthenticatedUser admin,
                                      @RequestParam(required = false) String q,
@@ -52,6 +56,7 @@ class AdminController {
     }
 
     /** Disabling also revokes the user's refresh tokens, logging them out everywhere. */
+    @Operation(summary = "Enable or disable a user", description = "Disabling revokes all their refresh tokens. 409 if an admin targets themselves.")
     @PatchMapping("/{id}")
     UserResponse setEnabled(@AuthenticationPrincipal AuthenticatedUser admin, @PathVariable Long id,
                             @Valid @RequestBody UpdateUserRequest request) {
@@ -59,12 +64,14 @@ class AdminController {
     }
 
     /** 409 unless the user is already disabled; then permanently removes them and all their data. */
+    @Operation(summary = "Delete a user", description = "409 unless already disabled, or if an admin targets themselves. Permanently removes all their data.")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void delete(@AuthenticationPrincipal AuthenticatedUser admin, @PathVariable Long id) {
         adminService.deleteUser(admin.id(), id);
     }
 
+    @Operation(summary = "View a user's courses and progress", description = "Read-only.")
     @GetMapping("/{id}/courses")
     PageResponse<UserCourseProgressResponse> courses(@AuthenticationPrincipal AuthenticatedUser admin,
                                                       @PathVariable Long id,

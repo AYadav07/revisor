@@ -10,4 +10,6 @@ export const courseKeys = {
   list: (params: PageParams) => [...courseKeys.lists(), params] as const,
   details: () => [...courseKeys.all, 'detail'] as const,
   detail: (id: number) => [...courseKeys.details(), id] as const,
+  subtopics: () => [...courseKeys.all, 'subtopic'] as const,
+  subtopic: (id: number) => [...courseKeys.subtopics(), id] as const,
 }

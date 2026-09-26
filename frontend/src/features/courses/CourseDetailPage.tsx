@@ -1,15 +1,17 @@
 import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { ContentLoading } from '@/components/ContentLoading'
 import { EmptyState } from '@/components/EmptyState'
+import { LoadError } from '@/components/LoadError'
 import { PageHeader } from '@/components/PageHeader'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { parseIdParam } from '@/lib/ids'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { ROUTES } from '@/routes'
 import { AddSubtopicDialog } from './AddSubtopicDialog'
 import { AddTopicForm } from './AddTopicForm'
-import { courseProgress, nextTopicOrderIndex, parseCourseId, type TreeAction } from './courseTree'
+import { courseProgress, nextTopicOrderIndex, type TreeAction } from './courseTree'
 import { DeleteCourseDialog, DeleteSubtopicDialog, DeleteTopicDialog } from './DeleteDialogs'
 import { EditCourseDialog } from './EditCourseDialog'
 import { EditSubtopicDialog } from './EditSubtopicDialog'
@@ -30,14 +32,16 @@ function BackToCourses() {
 
 /** One course: its topics and subtopics, in one fetch, with the controls to grow and start them. */
 export function CourseDetailPage() {
-  const courseId = parseCourseId(useParams().id)
+  const courseId = parseIdParam(useParams().id)
   const { data: tree, isPending, isError, error, refetch, isFetching } = useCourseTree(courseId)
   const [action, setAction] = useState<TreeAction | null>(null)
   const closeAction = () => setAction(null)
+  const notFound = courseId === null || (isError && isCourseNotFound(error))
+  useDocumentTitle(notFound ? 'Course not found' : tree?.title)
 
   // "Not a real id", "doesn't exist" and "belongs to someone else" all look the same on purpose:
   // the API answers 404 for both of the latter, and this page mustn't reveal which it was.
-  if (courseId === null || (isError && isCourseNotFound(error))) {
+  if (notFound) {
     return (
       <>
         <BackToCourses />
@@ -58,24 +62,9 @@ export function CourseDetailPage() {
     <>
       <BackToCourses />
 
-      {isPending && (
-        <div role="status" aria-label="Loading course" className="space-y-3">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
-      )}
+      {isPending && <ContentLoading label="Loading course" />}
 
-      {isError && (
-        <Alert variant="destructive">
-          <AlertDescription className="flex items-center justify-between gap-4">
-            Couldn't load this course.
-            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+      {isError && <LoadError message="Couldn't load this course." onRetry={() => refetch()} retrying={isFetching} />}
 
       {tree && (
         <>

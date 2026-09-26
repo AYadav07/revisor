@@ -1,6 +1,8 @@
 package com.ay.revisor.course;
 
 import com.ay.revisor.shared.AuthenticatedUser;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Subtopics", description = "Subtopics within the caller's topics.")
 @RestController
 @RequestMapping("/api/v1/subtopics")
 class SubtopicController {
@@ -23,11 +26,13 @@ class SubtopicController {
         this.courseService = courseService;
     }
 
+    @Operation(summary = "Get a subtopic")
     @GetMapping("/{id}")
     SubtopicResponse get(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable Long id) {
         return courseService.getSubtopic(user.id(), id);
     }
 
+    @Operation(summary = "Update a subtopic's title or notes")
     @PutMapping("/{id}")
     SubtopicResponse update(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable Long id,
                             @Valid @RequestBody SubtopicRequest request) {
@@ -35,6 +40,7 @@ class SubtopicController {
     }
 
     /** Soft delete (API.md). */
+    @Operation(summary = "Delete a subtopic", description = "Soft delete.")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void delete(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable Long id) {

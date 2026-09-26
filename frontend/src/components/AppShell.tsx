@@ -1,4 +1,7 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Suspense } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { ContentLoading } from '@/components/ContentLoading'
+import { RouteErrorBoundary } from '@/components/RouteErrorBoundary'
 import { UserMenu } from '@/components/UserMenu'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/useAuth'
@@ -11,6 +14,7 @@ import { ROUTES } from '@/routes'
  */
 export function AppShell() {
   const { user } = useAuth()
+  const { pathname } = useLocation()
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -31,7 +35,12 @@ export function AppShell() {
         </div>
       </header>
       <main className="mx-auto max-w-5xl p-4">
-        <Outlet />
+        {/* Pages load on demand: the shell stays while one loads, and a failed load is contained here. */}
+        <RouteErrorBoundary resetKey={pathname}>
+          <Suspense fallback={<ContentLoading />}>
+            <Outlet />
+          </Suspense>
+        </RouteErrorBoundary>
       </main>
     </div>
   )

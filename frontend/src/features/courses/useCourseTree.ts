@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, courseApi, reviewApi, type SubtopicRequest, type TopicRequest } from '@/api'
+import { dashboardKeys } from '@/features/dashboard/queryKeys'
 import { courseKeys } from './queryKeys'
 
 /**
@@ -22,10 +23,17 @@ export function isCourseNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404
 }
 
-/** Every change to a course's tree is followed by refetching that tree, the single source of truth. */
+/**
+ * Every change to a course's tree is followed by refetching that tree, the single source of truth —
+ * and marks the dashboard stale, since its due list and progress figures are built from the same data.
+ */
 function useRefreshTree(courseId: number) {
   const queryClient = useQueryClient()
-  return () => queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) })
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) }),
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
+    ])
 }
 
 export function useCreateTopic(courseId: number) {
@@ -75,10 +83,12 @@ export function useDeleteTopic(courseId: number) {
 
 export function useUpdateSubtopic(courseId: number) {
   const refresh = useRefreshTree(courseId)
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ subtopicId, request }: { subtopicId: number; request: SubtopicRequest }) =>
       courseApi.updateSubtopic(subtopicId, request),
-    onSuccess: refresh,
+    // The review screen caches a subtopic's notes; an edit must not leave the old ones there.
+    onSuccess: () => Promise.all([refresh(), queryClient.invalidateQueries({ queryKey: courseKeys.subtopics() })]),
   })
 }
 

@@ -178,6 +178,11 @@ request's full log trail without needing to log sensitive payloads.
 caller's `X-Request-Id` only if it matches `[A-Za-z0-9._-]{1,64}` (it goes into logs and a response
 header, so anything else could forge log lines or inject headers), otherwise generates a UUID. The
 id is in every log line as `requestId` and echoed on the response.
+Security-relevant events are logged by user id only: signup, login success and failure (unknown email
+/ wrong password / disabled account), refresh-token reuse (`WARN`), rate-limit hits (`WARN`; the
+signup limit's client IP is logged, the login limit's email is not), and every admin action
+(alongside its `AdminAction` row). An unhandled exception is logged at `ERROR` with its stack trace
+and answered with a generic 500 that exposes none of it (API.md).
 
 ## Open items
 None currently.

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, authApi } from '@/api'
+import { ApiError, adminApi, authApi, dashboardApi } from '@/api'
 import { ann } from '@/test/auth'
 import App from './App'
 
@@ -13,15 +13,23 @@ vi.mock('@/api', async (importOriginal) => {
   return {
     ...actual,
     authApi: { signup: vi.fn(), login: vi.fn(), refresh: vi.fn(), logout: vi.fn() },
+    dashboardApi: { summary: vi.fn(), progress: vi.fn(), due: vi.fn() },
+    adminApi: { listUsers: vi.fn() },
   }
 })
 vi.mock('@/lib/timezone', () => ({ detectTimezone: () => 'Asia/Kolkata' }))
 
 const api = vi.mocked(authApi)
+const dashboard = vi.mocked(dashboardApi)
+const admin = vi.mocked(adminApi)
 
 beforeEach(() => {
   vi.clearAllMocks()
   api.refresh.mockRejectedValue(new ApiError(401, 'no session'))
+  dashboard.summary.mockResolvedValue({ dueToday: 0, overdue: 0, totalLearned: 0 })
+  dashboard.progress.mockResolvedValue([])
+  dashboard.due.mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0 })
+  admin.listUsers.mockResolvedValue({ content: [], page: 0, size: 20, totalElements: 0 })
 })
 
 function renderApp(path: string, options: { strict?: boolean } = {}) {
@@ -37,7 +45,7 @@ function renderApp(path: string, options: { strict?: boolean } = {}) {
 }
 
 const signInHeading = () => screen.findByText('Sign in', { selector: '[data-slot="card-title"]' })
-const dashboardHeading = () => screen.findByText('Dashboard', { selector: '[data-slot="card-title"]' })
+const dashboardHeading = () => screen.findByRole('heading', { level: 1, name: 'Dashboard' })
 
 describe('routing and the sign-in journey', () => {
   it('sends a signed-out visitor from a protected page to /login', async () => {
@@ -114,7 +122,7 @@ describe('routing and the sign-in journey', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
     expect(await screen.findByText('Invalid email or password.')).toBeInTheDocument()
-    expect(screen.queryByText('Dashboard', { selector: '[data-slot="card-title"]' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 1, name: 'Dashboard' })).not.toBeInTheDocument()
   })
 
   it('signs out from the dashboard, returns to /login, and the next visit is signed out too', async () => {
@@ -147,7 +155,7 @@ describe('routing and the sign-in journey', () => {
 
       renderApp('/admin/users')
 
-      expect(await screen.findByText('Users', { selector: '[data-slot="card-title"]' })).toBeInTheDocument()
+      expect(await screen.findByRole('heading', { level: 1, name: 'Users' })).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'Admin' })).toBeInTheDocument()
     })
 
@@ -159,6 +167,7 @@ describe('routing and the sign-in journey', () => {
       expect(await screen.findByText('Not authorized')).toBeInTheDocument()
       expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument()
+      expect(admin.listUsers).not.toHaveBeenCalled() // the page never mounted, so nothing was even asked of the API
     })
 
     it('sends a signed-out visitor to /login rather than showing "Not authorized"', async () => {

@@ -24,6 +24,9 @@ details, DEPLOYMENT.md for the cross-origin/custom-domain implications of cookie
     "errors": [{ "field": "title", "message": "must not be blank" }]
   }
   ```
+- An unexpected server error is a `500` with type `.../errors/internal-error` and a generic detail —
+  no exception names or messages. The full stack trace is in the server log under the response's
+  `X-Request-Id`.
 - Ownership enforced server-side from the JWT at the query level; a resource owned by
   another user returns `404`, never `403`.
 - DTOs: separate request/response shapes, entities never exposed directly, mapped via

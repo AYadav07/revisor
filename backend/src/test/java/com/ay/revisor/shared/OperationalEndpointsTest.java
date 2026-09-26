@@ -72,6 +72,19 @@ class OperationalEndpointsTest {
     }
 
     @Test
+    void openApiDocument_groupsEndpointsByModule_andMarksOnlyAuthAsPublic() throws Exception {
+        mvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/v1/courses'].get.tags[0]").value("Courses"))
+                .andExpect(jsonPath("$.paths['/api/v1/courses'].get.summary").value("List courses"))
+                .andExpect(jsonPath("$.paths['/api/v1/admin/users'].get.tags[0]").value("Admin"))
+                // Auth endpoints override the global cookie requirement with an empty one; the rest inherit it.
+                .andExpect(jsonPath("$.paths['/api/v1/auth/login'].post.security").isEmpty())
+                .andExpect(jsonPath("$.paths['/api/v1/courses'].get.security").doesNotExist())
+                .andExpect(jsonPath("$.security[0].accessTokenCookie").exists());
+    }
+
+    @Test
     void swaggerUi_isServed() throws Exception {
         mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
     }

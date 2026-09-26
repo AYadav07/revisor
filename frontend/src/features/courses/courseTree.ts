@@ -1,15 +1,5 @@
 import type { CourseTree, SubtopicTreeNode, TopicTreeNode } from '@/api'
 
-/**
- * Reads a `:id` route param as a course id. Only plain positive integers count: "abc", "0", "-3",
- * "1.5" and "007" are all "no such course" without ever asking the server.
- */
-export function parseCourseId(param: string | undefined): number | null {
-  if (param === undefined || !/^[1-9]\d*$/.test(param)) return null
-  const id = Number(param)
-  return Number.isSafeInteger(id) ? id : null
-}
-
 export interface Progress {
   learned: number
   total: number

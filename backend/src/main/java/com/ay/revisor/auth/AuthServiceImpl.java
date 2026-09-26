@@ -2,6 +2,8 @@ package com.ay.revisor.auth;
 
 import com.ay.revisor.shared.ConflictException;
 import com.ay.revisor.shared.UnauthorizedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -12,9 +14,15 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 
+/**
+ * Logs security-relevant events by user id only — never emails, passwords or tokens (SECURITY.md,
+ * "Logging discipline"). The request id on each line ties an event to the request that caused it.
+ */
 @Service
 @Transactional
 class AuthServiceImpl implements AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
 
     static final Duration REFRESH_TOKEN_TTL = Duration.ofDays(14);
 
@@ -43,7 +51,9 @@ class AuthServiceImpl implements AuthService {
         User user = new User(request.name().trim(), email, passwordEncoder.encode(request.password()),
                 Role.USER, true, request.timezone());
         try {
-            return mapper.toResponse(userRepository.saveAndFlush(user));
+            UserResponse created = mapper.toResponse(userRepository.saveAndFlush(user));
+            log.info("User {} signed up", created.id());
+            return created;
         } catch (DataIntegrityViolationException e) {
             throw emailTaken(); // lost a race with a concurrent signup for the same email
         }
@@ -55,8 +65,14 @@ class AuthServiceImpl implements AuthService {
         String hashToCheck = user == null ? dummyPasswordHash : user.getPasswordHash();
         boolean passwordMatches = passwordEncoder.matches(request.password(), hashToCheck);
         if (user == null || !passwordMatches || !user.isEnabled()) {
+            if (user == null) {
+                log.info("Login failed: unknown email");
+            } else {
+                log.info("Login failed for user {}: {}", user.getId(), passwordMatches ? "account disabled" : "wrong password");
+            }
             throw new UnauthorizedException("Invalid credentials");
         }
+        log.info("User {} logged in", user.getId());
         return issueToken(user, UUID.randomUUID(), now);
     }
 
@@ -74,6 +90,8 @@ class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
 
         if (token.getRevokedAt() != null) {
+            // A rotated-out token came back: either a stale tab, or someone replaying a stolen one.
+            log.warn("Refresh token reuse for user {}: revoking token family {}", token.getUserId(), token.getFamilyId());
             refreshTokenRepository.revokeAllByFamilyId(token.getFamilyId(), now);
             throw new UnauthorizedException("Invalid refresh token");
         }

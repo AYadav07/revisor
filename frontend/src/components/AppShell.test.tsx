@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import { lazy, type ReactElement } from 'react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider } from 'next-themes'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -19,7 +20,7 @@ beforeEach(() => {
   document.documentElement.removeAttribute('data-theme')
 })
 
-function renderShell(options: { path?: string; auth?: Partial<AuthContextValue> } = {}) {
+function renderShell(options: { path?: string; auth?: Partial<AuthContextValue>; page?: ReactElement } = {}) {
   const auth = authValue({ status: 'authenticated', user: ann, ...options.auth })
   const view = () => (
     <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
@@ -27,7 +28,7 @@ function renderShell(options: { path?: string; auth?: Partial<AuthContextValue> 
         <MemoryRouter initialEntries={[options.path ?? '/dashboard']}>
           <Routes>
             <Route element={<AppShell />}>
-              <Route path="/dashboard" element={<p>dashboard page</p>} />
+              <Route path="/dashboard" element={options.page ?? <p>dashboard page</p>} />
               <Route path="/courses" element={<p>courses page</p>} />
               <Route path="/admin/users" element={<p>admin page</p>} />
             </Route>
@@ -147,5 +148,43 @@ describe('user menu', () => {
     renderShell({ auth: { status: 'unauthenticated', user: null } })
 
     expect(screen.queryByRole('button', { name: 'Ann' })).not.toBeInTheDocument()
+  })
+})
+
+describe('pages that load on demand', () => {
+  it('keeps the navigation on screen with a placeholder while a page loads, then shows the page', async () => {
+    let finish: (module: { default: () => ReactElement }) => void = () => {}
+    const Lazy = lazy(() => new Promise<{ default: () => ReactElement }>((resolve) => (finish = resolve)))
+    renderShell({ page: <Lazy /> })
+
+    expect(screen.getByRole('status', { name: 'Loading page' })).toBeInTheDocument()
+    expect(mainNav()).toBeInTheDocument()
+
+    finish({ default: () => <p>loaded page</p> })
+
+    expect(await screen.findByText('loaded page')).toBeInTheDocument()
+    expect(screen.queryByRole('status', { name: 'Loading page' })).not.toBeInTheDocument()
+  })
+
+  it('contains a page that fails to load: message shown, navigation intact', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const Broken = lazy(() => Promise.reject(new Error('Failed to fetch dynamically imported module')))
+    renderShell({ page: <Broken /> })
+
+    expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
+    expect(mainNav()).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument()
+  })
+
+  it('lets the user navigate away from a failed page', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const Broken = lazy(() => Promise.reject(new Error('nope')))
+    const { user } = renderShell({ page: <Broken /> })
+    await screen.findByText('Something went wrong')
+
+    await user.click(within(mainNav()).getByRole('link', { name: 'Courses' }))
+
+    expect(await screen.findByText('courses page')).toBeInTheDocument()
+    expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument()
   })
 })

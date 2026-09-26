@@ -1,10 +1,11 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
 import { toast } from 'sonner'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, courseApi, reviewApi, type CourseTree } from '@/api'
 import { LocationProbe } from '@/test/LocationProbe'
 import { renderWithProviders } from '@/test/render'
+import { dashboardKeys } from '@/features/dashboard/queryKeys'
 import { CourseDetailPage } from './CourseDetailPage'
 
 vi.mock('@/api', async (importOriginal) => {
@@ -46,6 +47,13 @@ function problem(status: number, errors: { field: string; message: string }[] = 
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Fixtures use fixed dates; pin "today" so which subtopics count as due never depends on the real date.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 8, 26, 12))
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 function renderPage(route = '/courses/7') {
@@ -166,6 +174,24 @@ describe('the tree', () => {
     expect(within(fresh).getByRole('button', { name: /Mark .Consistent hashing. as learned/ })).toBeEnabled()
   })
 
+  it('offers a Review link on learned subtopics that are due today or overdue, and only those', async () => {
+    const tree = makeTree()
+    tree.topics[0].subtopics = [
+      { id: 100, title: 'Due today', notes: null, learned: true, nextReviewDate: '2026-09-26' },
+      { id: 101, title: 'Overdue', notes: null, learned: true, nextReviewDate: '2026-09-01' },
+      { id: 102, title: 'Tomorrow', notes: null, learned: true, nextReviewDate: '2026-09-27' },
+      { id: 103, title: 'Not learned', notes: null, learned: false, nextReviewDate: null },
+    ]
+    courses.getCourse.mockResolvedValue(tree)
+
+    renderPage()
+
+    expect(await screen.findByRole('link', { name: /Review .Due today./ })).toHaveAttribute('href', '/subtopics/100/review')
+    expect(screen.getByRole('link', { name: /Review .Overdue./ })).toHaveAttribute('href', '/subtopics/101/review')
+    expect(screen.queryByRole('link', { name: /Review .Tomorrow./ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Review .Not learned./ })).not.toBeInTheDocument()
+  })
+
   it('collapses and re-expands a topic', async () => {
     courses.getCourse.mockResolvedValue(makeTree())
     const { user } = renderPage()
@@ -219,6 +245,19 @@ describe('marking a subtopic as learned', () => {
     expect(await screen.findByText(/Next review Sep\D+27\D+2026/)).toBeInTheDocument()
     expect(screen.getByText('2 of 2 subtopics learned')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /as learned/ })).not.toBeInTheDocument()
+  })
+
+  it('marks the dashboard stale, since its numbers just changed', async () => {
+    courses.getCourse.mockResolvedValue(makeTree())
+    review.learn.mockResolvedValue({} as never)
+    const { user, queryClient } = renderPage()
+    queryClient.setQueryData([...dashboardKeys.all, 'summary'], { dueToday: 0 })
+
+    await user.click(await screen.findByRole('button', { name: /Mark .Consistent hashing. as learned/ }))
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState([...dashboardKeys.all, 'summary'])?.isInvalidated).toBe(true),
+    )
   })
 
   it('disables only the clicked subtopic while it is saving', async () => {

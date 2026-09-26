@@ -6,6 +6,8 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
 import io.github.bucket4j.TimeMeter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -21,6 +23,8 @@ import java.util.Locale;
  */
 @Component
 class AuthRateLimiter {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthRateLimiter.class);
 
     static final int LOGIN_ATTEMPTS = 5;
     static final Duration LOGIN_WINDOW = Duration.ofMinutes(15);
@@ -43,12 +47,13 @@ class AuthRateLimiter {
 
     /** @throws TooManyRequestsException once an email has used its login attempts for the window */
     void checkLogin(String email) {
-        consume(loginBuckets, email.trim().toLowerCase(Locale.ROOT), LOGIN_ATTEMPTS, LOGIN_WINDOW);
+        // The email is the bucket key, but stays out of the log (SECURITY.md, "Logging discipline").
+        consume(loginBuckets, email.trim().toLowerCase(Locale.ROOT), LOGIN_ATTEMPTS, LOGIN_WINDOW, "Login rate limit hit");
     }
 
     /** @throws TooManyRequestsException once an IP address has used its signups for the window */
     void checkSignup(String clientIp) {
-        consume(signupBuckets, clientIp, SIGNUP_ATTEMPTS, SIGNUP_WINDOW);
+        consume(signupBuckets, clientIp, SIGNUP_ATTEMPTS, SIGNUP_WINDOW, "Signup rate limit hit from " + clientIp);
     }
 
     /** Forgets all state. Tests only. */
@@ -57,7 +62,7 @@ class AuthRateLimiter {
         signupBuckets.invalidateAll();
     }
 
-    private void consume(Cache<String, Bucket> buckets, String key, int attempts, Duration window) {
+    private void consume(Cache<String, Bucket> buckets, String key, int attempts, Duration window, String logMessage) {
         Bucket bucket = buckets.get(key, k -> Bucket.builder()
                 .addLimit(limit -> limit.capacity(attempts).refillIntervally(attempts, window))
                 .withCustomTimePrecision(timeMeter)
@@ -65,6 +70,7 @@ class AuthRateLimiter {
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
         if (!probe.isConsumed()) {
             long seconds = Math.max(1, (probe.getNanosToWaitForRefill() + 999_999_999L) / 1_000_000_000L);
+            log.warn(logMessage);
             throw new TooManyRequestsException(seconds);
         }
     }
