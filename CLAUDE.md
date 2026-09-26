@@ -67,7 +67,9 @@ best practice" without raising it first.
   context; repositories get Testcontainers integration tests; controllers get MockMvc/full
   context integration tests covering happy path + main failure mode; frontend
   components/hooks get React Testing Library tests. See ARCHITECTURE.md §10 for the full
-  table. Testcontainers-backed tests are tagged `postgres` and excluded from the default
+  table. `./gradlew test` always runs on the in-memory `local` profile (set in build.gradle) — never
+  on `dev`, whose Postgres is the developer's real data and which controller tests wipe.
+  Testcontainers-backed tests are tagged `postgres` and excluded from the default
   `./gradlew test` run (they need a reachable Docker daemon) — run them explicitly with
   `./gradlew test -PincludePostgresTests`.
 - Open items live in each doc's "Open items"/"Open questions" section — check before

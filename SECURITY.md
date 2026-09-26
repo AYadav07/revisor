@@ -129,6 +129,10 @@ Implementation notes:
 JWT signing private key, DB credentials: environment variables / local `.env` (gitignored)
 in dev; VPS filesystem with restricted permissions or platform secret store in production
 — never committed, never baked into a Docker image.
+The `dev` profile reads its pair from `backend/secrets/` by default (gitignored, created once by
+`backend/scripts/generate-jwt-keys.sh`, private key `0600`); `JWT_PRIVATE_KEY_PATH` /
+`JWT_PUBLIC_KEY_PATH` override it. At startup the pair is rejected unless it is at least 2048 bits
+and the public key matches the private one.
 
 ## Admin role
 - `role` column on `User` (`USER`/`ADMIN`), granted **only via a one-time manual Flyway

@@ -13,7 +13,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Base for repository tests that need real Postgres — ARCHITECTURE.md §10 calls this out
  * specifically: index and cascade behavior H2's PostgreSQL-compatibility mode doesn't fully
  * replicate. Every subclass shares one container (started once per JVM, per Testcontainers'
- * usual singleton pattern) and points Flyway/Hibernate at it via {@code dev}'s migration set.
+ * usual singleton pattern) and points Flyway/Hibernate at it via the PostgreSQL migration set,
+ * overriding the H2 settings of the {@code local} profile every test runs under (see build.gradle).
  * <p>
  * Requires a Docker daemon reachable from the test JVM; skip with {@code -DexcludeTags=postgres}
  * where Docker isn't available (see build.gradle).
@@ -22,6 +23,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @SpringBootTest(properties = {
         "spring.flyway.locations=classpath:db/migration/postgresql",
+        "spring.datasource.driver-class-name=org.postgresql.Driver",
         "spring.jpa.hibernate.ddl-auto=validate"
 })
 public abstract class PostgresIntegrationTest {

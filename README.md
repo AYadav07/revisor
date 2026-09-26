@@ -34,9 +34,15 @@ Data persists in the `pgdata` volume across restarts. `docker compose down` stop
 
 ### 2. Backend — http://localhost:8080
 
-The default `dev` profile connects to that Postgres on `localhost:5432` and generates a throwaway
-JWT key pair on each start (so a backend restart signs everyone out). It needs the **same**
-password as the container, read from `.env`:
+The default `dev` profile connects to that Postgres on `localhost:5432` and signs tokens with an
+RSA key pair read from `backend/secrets/` (gitignored). Create the pair once:
+
+```bash
+cd backend
+scripts/generate-jwt-keys.sh      # first time only; refuses to overwrite an existing pair
+```
+
+The backend needs the **same** database password as the container, read from `.env`:
 
 ```bash
 cd backend
@@ -117,8 +123,8 @@ new role is in your token.
 ## Automated tests
 
 ```bash
-cd backend && ./gradlew test                            # needs the Postgres above running
-cd backend && ./gradlew test -PincludePostgresTests     # also the Testcontainers suites (Docker)
+cd backend && ./gradlew test                            # in-memory H2; never touches your dev database
+cd backend && ./gradlew test -PincludePostgresTests     # also the Testcontainers suites (needs Docker)
 cd frontend && npm test && npm run lint
 ```
 
@@ -128,8 +134,11 @@ cd frontend && npm test && npm run lint
   started without `SPRING_DATASOURCE_PASSWORD`, or `.env` changed after the volume was created
   (Postgres keeps the password from its first start; `docker compose down -v` resets it, wiping
   data).
+- **Backend fails with `Cannot read key file secrets/jwt_private.pem`** — run
+  `scripts/generate-jwt-keys.sh` in `backend/`, and start the backend from `backend/` (the default
+  key paths are relative to it). Elsewhere, set `JWT_PRIVATE_KEY_PATH` / `JWT_PUBLIC_KEY_PATH`.
 - **`Connection to localhost:5432 refused`** — Postgres isn't running: `docker compose up -d
   postgres` in `backend/`.
 - **Signed in, but every request is 401 / you're bounced to `/login`** — you're on
-  `127.0.0.1:5173` instead of `localhost:5173`, or the backend restarted (new keys: sign in again).
+  `127.0.0.1:5173` instead of `localhost:5173`, or the JWT keys were regenerated (sign in again).
 - **Port already in use** — something else is on 8080/5173/5432; stop it or change the port.

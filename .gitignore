@@ -38,3 +38,5 @@ out/
 .mcp.json
 .claude
 /backend/.env
+/backend/secrets/
+*.pem

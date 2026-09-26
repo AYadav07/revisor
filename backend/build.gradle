@@ -53,6 +53,10 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// Tests always run on the in-memory `local` profile (H2, throwaway JWT keys), never the default `dev`
+	// one: dev points at the developer's real Postgres, and the controller tests delete every user
+	// after each test. The Testcontainers suites bring their own Postgres (PostgresIntegrationTest).
+	systemProperty 'spring.profiles.active', 'local'
 	// Excludes Testcontainers-backed tests by default: they need a reachable Docker daemon,
 	// which local dev machines and CI have but some sandboxes don't. Run them explicitly with
 	// `./gradlew test -PincludePostgresTests`.
