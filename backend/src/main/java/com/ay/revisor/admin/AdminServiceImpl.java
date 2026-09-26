@@ -7,6 +7,8 @@ import com.ay.revisor.course.CourseService;
 import com.ay.revisor.dashboard.CourseProgressResponse;
 import com.ay.revisor.dashboard.DashboardService;
 import com.ay.revisor.shared.ConflictException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 class AdminServiceImpl implements AdminService {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminServiceImpl.class);
 
     private final AdminActionRepository adminActionRepository;
     private final UserService userService;
@@ -79,7 +83,9 @@ class AdminServiceImpl implements AdminService {
         return view;
     }
 
+    /** The AdminAction table is the audit trail; the log line makes the same event visible alongside its request. */
     private void record(Long adminUserId, AdminActionType type, Long targetUserId) {
         adminActionRepository.save(new AdminAction(adminUserId, type.name(), targetUserId));
+        log.info("Admin {} performed {}{}", adminUserId, type, targetUserId == null ? "" : " on user " + targetUserId);
     }
 }

@@ -1,5 +1,8 @@
 package com.ay.revisor.auth;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
@@ -16,6 +19,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
+@Tag(name = "Auth", description = "Sign up, sign in and session cookies. Public: these endpoints need no access token.")
+@SecurityRequirements // public: overrides the global cookie requirement
 @RestController
 @RequestMapping("/api/v1/auth")
 class AuthController {
@@ -35,6 +40,7 @@ class AuthController {
         this.rateLimiter = rateLimiter;
     }
 
+    @Operation(summary = "Create an account", description = "Rate-limited per IP. 409 if the email is already registered.")
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
     AuthUserResponse signup(@Valid @RequestBody SignupRequest request, HttpServletRequest http) {
@@ -42,6 +48,7 @@ class AuthController {
         return AuthUserResponse.from(authService.signup(request));
     }
 
+    @Operation(summary = "Sign in", description = "Sets the access and refresh cookies. Rate-limited per email; 401 on bad credentials or a disabled account.")
     @PostMapping("/login")
     ResponseEntity<SessionResponse> login(@Valid @RequestBody LoginRequest request) {
         rateLimiter.checkLogin(request.email());
@@ -50,12 +57,14 @@ class AuthController {
     }
 
     /** Rotates the refresh token; the browser sends the cookie automatically (API.md). */
+    @Operation(summary = "Rotate the session", description = "Exchanges the refresh cookie for new access and refresh cookies. Reusing an old refresh token revokes its whole family.")
     @PostMapping("/refresh")
     ResponseEntity<SessionResponse> refresh(@CookieValue(name = AuthCookies.REFRESH, required = false) String refreshToken) {
         Instant now = clock.instant();
         return session(authService.refresh(refreshToken, now), now);
     }
 
+    @Operation(summary = "Sign out", description = "Revokes the refresh token's family and clears both cookies. Safe to call without a session.")
     @PostMapping("/logout")
     ResponseEntity<Void> logout(@CookieValue(name = AuthCookies.REFRESH, required = false) String refreshToken) {
         authService.logout(refreshToken, clock.instant());

@@ -1,10 +1,14 @@
 package com.ay.revisor.shared;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -25,6 +29,8 @@ import java.util.Map;
 class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     static final String TYPE_BASE = "https://revisor.dev/errors/";
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(NotFoundException.class)
     ResponseEntity<Object> handleNotFound(NotFoundException ex, WebRequest request) {
@@ -78,6 +84,24 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .toList();
         problem.setProperty("errors", errors);
         return handleExceptionInternal(ex, problem, headers, status, request);
+    }
+
+    /**
+     * Anything not handled above is a bug: logged in full (the log line carries the request id, which
+     * the caller also has from the response header), answered with a generic 500 that reveals nothing
+     * about the internals.
+     * <p>
+     * Security exceptions are rethrown untouched: {@code @PreAuthorize} denials surface here, inside
+     * Spring MVC, and must reach Spring Security's own handling to become 401/403, not 500.
+     */
+    @ExceptionHandler(Exception.class)
+    ResponseEntity<Object> handleUnexpected(Exception ex, WebRequest request) throws Exception {
+        if (ex instanceof AccessDeniedException || ex instanceof AuthenticationException) {
+            throw ex;
+        }
+        log.error("Unhandled exception on {}", request.getDescription(false), ex);
+        return respond(ex, request, HttpStatus.INTERNAL_SERVER_ERROR, "internal-error", "Internal server error",
+                "Something went wrong on our side. Quote the X-Request-Id header when reporting it.");
     }
 
     private ResponseEntity<Object> respond(Exception ex, WebRequest request, HttpStatus status, String slug,
