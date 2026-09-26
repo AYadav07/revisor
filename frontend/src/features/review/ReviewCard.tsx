@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { ApiError, type DueItem, type Quality } from '@/api'
+import { LoadError } from '@/components/LoadError'
 import { PageHeader } from '@/components/PageHeader'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -116,16 +117,7 @@ export function ReviewCard({ item, position, total, onGraded, onSkip }: ReviewCa
 function Notes({ query }: { query: ReturnType<typeof useSubtopicNotes> }) {
   if (query.isPending) return <Skeleton role="status" aria-label="Loading notes" className="h-16 w-full" />
   if (query.isError) {
-    return (
-      <Alert variant="destructive">
-        <AlertDescription className="flex items-center justify-between gap-4">
-          Couldn't load your notes.
-          <Button variant="outline" size="sm" onClick={() => query.refetch()} disabled={query.isFetching}>
-            Try again
-          </Button>
-        </AlertDescription>
-      </Alert>
-    )
+    return <LoadError message="Couldn't load your notes." onRetry={() => query.refetch()} retrying={query.isFetching} />
   }
   return query.data.notes ? (
     <p className="whitespace-pre-wrap">{query.data.notes}</p>

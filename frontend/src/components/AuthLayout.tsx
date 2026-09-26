@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 
 interface AuthLayoutProps {
   title: string
@@ -22,6 +23,7 @@ export function AuthLayout({
   footerLinkTo,
   children,
 }: AuthLayoutProps) {
+  useDocumentTitle(title)
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-sm">

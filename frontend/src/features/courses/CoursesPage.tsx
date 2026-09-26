@@ -2,12 +2,13 @@ import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { EmptyState } from '@/components/EmptyState'
+import { LoadError } from '@/components/LoadError'
 import { PageHeader } from '@/components/PageHeader'
 import { Pagination } from '@/components/Pagination'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { pageFromSearch } from '@/lib/pageParam'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { CourseCard } from './CourseCard'
 import { CreateCourseDialog } from './CreateCourseDialog'
 import { COURSES_PAGE_SIZE, useCourses } from './useCourses'
@@ -15,6 +16,7 @@ import { COURSES_PAGE_SIZE, useCourses } from './useCourses'
 const GRID = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3'
 
 export function CoursesPage() {
+  useDocumentTitle('Courses')
   const [searchParams, setSearchParams] = useSearchParams()
   const page = pageFromSearch(searchParams.get('page'))
   const [creating, setCreating] = useState(false)
@@ -44,14 +46,7 @@ export function CoursesPage() {
       )}
 
       {isError && (
-        <Alert variant="destructive">
-          <AlertDescription className="flex items-center justify-between gap-4">
-            Couldn't load your courses.
-            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <LoadError message="Couldn't load your courses." onRetry={() => refetch()} retrying={isFetching} />
       )}
 
       {data && data.totalElements === 0 && (

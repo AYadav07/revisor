@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { ContentLoading } from '@/components/ContentLoading'
 import { EmptyState } from '@/components/EmptyState'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { LoadError } from '@/components/LoadError'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { parseIdParam } from '@/lib/ids'
 import { pluralize } from '@/lib/plural'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { ROUTES, reviewPath } from '@/routes'
 import { ReviewCard } from './ReviewCard'
 import { useReviewQueue } from './useReview'
@@ -21,27 +22,14 @@ export function ReviewPage() {
   const queue = useReviewQueue()
   const [reviewed, setReviewed] = useState(0)
   const [finished, setFinished] = useState(false)
+  useDocumentTitle('Review')
 
   if (queue.isPending) {
-    return (
-      <div role="status" aria-label="Loading review" className="space-y-3">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    )
+    return <ContentLoading label="Loading review" />
   }
 
   if (queue.isError) {
-    return (
-      <Alert variant="destructive">
-        <AlertDescription className="flex items-center justify-between gap-4">
-          Couldn't load your reviews.
-          <Button variant="outline" size="sm" onClick={() => queue.refetch()} disabled={queue.isFetching}>
-            Try again
-          </Button>
-        </AlertDescription>
-      </Alert>
-    )
+    return <LoadError message="Couldn't load your reviews." onRetry={() => queue.refetch()} retrying={queue.isFetching} />
   }
 
   const items = queue.data.content

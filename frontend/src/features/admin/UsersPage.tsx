@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/features/auth/useAuth'
 import { pageFromSearch } from '@/lib/pageParam'
+import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { DeleteUserDialog } from './DeleteUserDialog'
 import { UserCoursesDialog } from './UserCoursesDialog'
 import { UserSearchForm } from './UserSearchForm'
@@ -20,6 +21,7 @@ type Dialog = { type: 'delete'; user: AdminUser } | { type: 'courses'; user: Adm
 
 /** `/admin/users` (ADMIN only): find users, disable or re-enable them, delete disabled ones, see their courses. */
 export function UsersPage() {
+  useDocumentTitle('Users')
   const { user: me } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   // Search and page live in the URL, so refresh, Back and shared links all land on the same view.
