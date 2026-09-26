@@ -40,3 +40,5 @@ out/
 /backend/.env
 /backend/secrets/
 *.pem
+/deploy/.env
+/deploy/secrets/

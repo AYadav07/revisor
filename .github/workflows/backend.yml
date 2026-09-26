@@ -1,0 +1,124 @@
+# Backend CI/CD (DEPLOYMENT.md "CI/CD"): every PR and push runs the full test suite; a push to main then
+# builds the image, pushes it to GitHub Container Registry and redeploys the VM over SSH. The frontend
+# is deployed separately by Cloudflare Pages.
+#
+# Repository configuration (Settings → Secrets and variables → Actions; see deploy/README.md):
+#   secrets  DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS
+#   vars     API_DOMAIN (e.g. api.revisor.dev), DEPLOY_DIR (default /opt/revisor)
+name: Backend
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**', 'deploy/**', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['backend/**', 'deploy/**', '.github/workflows/backend.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  # Superseded PR runs are cancelled; a deploy on main is never interrupted halfway.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      # Includes the Testcontainers suites: the runner has Docker.
+      - run: ./gradlew test -PincludePostgresTests
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: backend/build/reports/tests/test
+
+  image:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.name.outputs.image }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: name
+        # GHCR names must be lowercase; the owner (AYadav07) isn't.
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/revisor-backend" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          # latest is what the VM runs; the SHA tag is what you roll back to (deploy/README.md).
+          tags: |
+            ${{ steps.name.outputs.image }}:latest
+            ${{ steps.name.outputs.image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: image
+    # Skipped until the VM exists and the repository is configured (deploy/README.md); tests and the
+    # image push still run meanwhile.
+    if: vars.API_DOMAIN != ''
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/opt/revisor' }}
+      TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure SSH
+        # The host key is pinned from a secret, not fetched with ssh-keyscan at deploy time — that
+        # would trust whatever answers on the first connection.
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf 'Host target\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  StrictHostKeyChecking yes\n' \
+            "${{ secrets.DEPLOY_HOST }}" "${{ secrets.DEPLOY_USER }}" > ~/.ssh/config
+      - name: Ship the stack definition
+        # The VM's compose file and Caddyfile always match what's in git; .env and secrets/ stay put.
+        run: scp deploy/compose.yaml deploy/Caddyfile "target:$DEPLOY_DIR/"
+      - name: Pull and restart
+        # A job-scoped token logs the VM in to GHCR just for this pull, then it's logged out again —
+        # no long-lived registry credential stored on the VM.
+        run: |
+          printf '%s' "${{ secrets.GITHUB_TOKEN }}" | ssh target "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+          # shellcheck disable=SC2029 # DEPLOY_DIR is a runner variable: expanding it here is intended.
+          ssh target "cd '$DEPLOY_DIR' && docker compose pull backend && docker compose up -d --remove-orphans; status=\$?; docker logout ghcr.io; docker image prune -f; exit \$status"
+      - name: Wait until healthy
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS "https://${{ vars.API_DOMAIN }}/actuator/health" | grep -q '"UP"'; then
+              echo "Healthy after $attempt attempt(s)"; exit 0
+            fi
+            sleep 10
+          done
+          echo "Backend did not become healthy in 5 minutes"
+          # shellcheck disable=SC2029 # DEPLOY_DIR is a runner variable: expanding it here is intended.
+          ssh target "cd '$DEPLOY_DIR' && docker compose ps && docker compose logs --tail 100 backend"
+          exit 1

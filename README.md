@@ -120,6 +120,12 @@ copy it as the next Flyway migration (e.g. `V3__promote_initial_admin.sql` in
 `db/migration/postgresql/`), set the email, restart the backend, then sign out and back in so the
 new role is in your token.
 
+## Deployment
+
+The backend ships as a Docker image to one VM running Caddy + backend + Postgres, deployed by GitHub
+Actions on every push to `main`; the frontend deploys separately to Cloudflare Pages. Setup and
+operations: [deploy/README.md](deploy/README.md); design: [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Automated tests
 
 ```bash

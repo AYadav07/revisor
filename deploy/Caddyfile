@@ -1,0 +1,11 @@
+# Reverse proxy for the API subdomain (DEPLOYMENT.md). Caddy obtains and renews the TLS certificate
+# itself. API_DOMAIN comes from .env — e.g. api.revisor.dev once the domain is chosen.
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	reverse_proxy backend:8080 {
+		# Caddy sets X-Forwarded-For itself, which the backend trusts for the signup rate limit.
+		health_uri /actuator/health/readiness
+		health_interval 30s
+	}
+}

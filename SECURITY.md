@@ -122,8 +122,8 @@ Implementation notes:
   Behind Caddy the socket peer is always Caddy, so the `prod` profile sets
   `server.forward-headers-strategy: native` to honour `X-Forwarded-For`. That header is only
   trustworthy if nothing but the proxy can reach the backend port — otherwise a client could
-  spoof it and dodge the limit. The compose file's published `8080` is for local use; in
-  production bind it to the Docker network only.
+  spoof it and dodge the limit. In production (`deploy/compose.yaml`) the backend publishes
+  no port at all — only Caddy is reachable, and it replaces any client-sent `X-Forwarded-For`.
 
 ## Secrets management
 JWT signing private key, DB credentials: environment variables / local `.env` (gitignored)

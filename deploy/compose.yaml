@@ -1,0 +1,103 @@
+# Production stack for the backend VM (DEPLOYMENT.md): Postgres + backend + Caddy on one e2-micro
+# (1 GB RAM). Lives in the deploy directory on the VM next to .env and secrets/; CI copies this file
+# and the Caddyfile there on every deploy. One-time VM setup: deploy/README.md.
+#
+# Only Caddy is reachable from outside (80/443). The backend has no published port: X-Forwarded-For
+# is trusted for the signup rate limit, which is only safe if nothing but Caddy can reach it
+# (SECURITY.md). Postgres sits on a network Caddy isn't on.
+name: revisor
+
+# Docker's own log driver, rotated, is all the log shipping this scale needs (DEPLOYMENT.md,
+# "Observability") — and it keeps the small VM disk from filling up.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:16
+    logging: *logging
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: revisor
+      POSTGRES_USER: revisor
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    # Conservative memory settings for a 1 GB machine shared with the JVM (DEPLOYMENT.md); Postgres's
+    # defaults assume a larger host. Twenty connections covers Hikari's pool of ten with headroom.
+    command: >-
+      postgres
+      -c shared_buffers=64MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=32MB
+      -c effective_cache_size=192MB
+      -c max_connections=20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [db]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "revisor", "-d", "revisor"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/ayadav07/revisor-backend}:${BACKEND_TAG:-latest}
+    logging: *logging
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/revisor
+      SPRING_DATASOURCE_USERNAME: revisor
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      JWT_PRIVATE_KEY_PATH: /run/secrets/jwt/jwt_private.pem
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt_public.pem
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:?set APP_CORS_ALLOWED_ORIGINS in .env}
+      # Bounded heap for the 1 GB host (DEPLOYMENT.md) — tune against measured usage. On OOM, exit and
+      # let Docker restart the container rather than limp along.
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xmx384m -Xss256k -XX:+ExitOnOutOfMemoryError}
+    volumes:
+      # Read-only; the private key must be readable by the image's uid 10001 (deploy/README.md).
+      - ./secrets:/run/secrets/jwt:ro
+    networks: [web, db]
+    mem_limit: 700m
+    healthcheck:
+      # The JRE image has no curl/wget; bash's /dev/tcp is enough for one HTTP request.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health/readiness HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  caddy:
+    image: caddy:2
+    logging: *logging
+    restart: unless-stopped
+    depends_on: [backend]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates live here. Losing this volume means re-issuing, and Let's Encrypt rate-limits that.
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [web]
+    mem_limit: 128m
+
+networks:
+  web:
+  db:
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
