@@ -1,3 +1,4 @@
+import { lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/AppShell'
 import { Toaster } from '@/components/ui/sonner'
@@ -5,12 +6,16 @@ import { AuthProvider } from '@/features/auth/AuthProvider'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { PublicOnly, RequireAuth, RequireRole } from '@/features/auth/RouteGuards'
 import { SignupPage } from '@/features/auth/SignupPage'
-import { UsersPage } from '@/features/admin/UsersPage'
-import { CourseDetailPage } from '@/features/courses/CourseDetailPage'
-import { CoursesPage } from '@/features/courses/CoursesPage'
-import { ReviewPage } from '@/features/review/ReviewPage'
-import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { DEFAULT_AUTHENTICATED_PATH, ROUTES } from '@/routes'
+
+// Each screen behind the shell is its own chunk, fetched when first visited, so signing in doesn't
+// download the admin screen (and its table) for someone who will never open it. Sign-in and sign-up
+// stay in the main bundle: they're the first thing a new visitor sees.
+const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
+const CoursesPage = lazy(() => import('@/features/courses/CoursesPage').then((m) => ({ default: m.CoursesPage })))
+const CourseDetailPage = lazy(() => import('@/features/courses/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })))
+const ReviewPage = lazy(() => import('@/features/review/ReviewPage').then((m) => ({ default: m.ReviewPage })))
+const UsersPage = lazy(() => import('@/features/admin/UsersPage').then((m) => ({ default: m.UsersPage })))
 
 /** Providers that need the router and query client are mounted above this, in main.tsx. */
 function App() {
