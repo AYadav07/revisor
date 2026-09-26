@@ -101,8 +101,9 @@ jobs:
           printf 'Host target\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  StrictHostKeyChecking yes\n' \
             "${{ secrets.DEPLOY_HOST }}" "${{ secrets.DEPLOY_USER }}" > ~/.ssh/config
       - name: Ship the stack definition
-        # The VM's compose file and Caddyfile always match what's in git; .env and secrets/ stay put.
-        run: scp deploy/compose.yaml deploy/Caddyfile "target:$DEPLOY_DIR/"
+        # The VM's stack files always match what's in git; .env and secrets/ stay put. -p keeps
+        # backup.sh executable.
+        run: scp -p deploy/compose.yaml deploy/Caddyfile deploy/backup.sh "target:$DEPLOY_DIR/"
       - name: Pull and restart
         # A job-scoped token logs the VM in to GHCR just for this pull, then it's logged out again —
         # no long-lived registry credential stored on the VM.

@@ -8,10 +8,12 @@ Production runs on one GCP e2-micro VM (DEPLOYMENT.md): **Caddy** (HTTPS on 80/4
 | `compose.yaml` | The three services, memory limits, networks, log rotation |
 | `Caddyfile` | Reverse proxy for `$API_DOMAIN`, automatic Let's Encrypt certificate |
 | `.env.example` | Template for the VM's `.env` (secrets and domain — never committed) |
+| `backup.sh` | Nightly encrypted Postgres backup to object storage (restic) |
+| `systemd/` | The timer that runs `backup.sh` nightly (installed once, step 7) |
 
 CI (`.github/workflows/backend.yml`) tests every PR and push. On a push to `main` it builds the image,
 pushes it to `ghcr.io/ayadav07/revisor-backend` (tagged `latest` and the commit SHA), copies
-`compose.yaml` and `Caddyfile` to the VM, pulls and restarts, then waits for
+`compose.yaml`, `Caddyfile` and `backup.sh` to the VM, pulls and restarts, then waits for
 `https://$API_DOMAIN/actuator/health` to report `UP`.
 
 On the VM, the deploy directory (`/opt/revisor` by default) holds:
@@ -20,6 +22,8 @@ On the VM, the deploy directory (`/opt/revisor` by default) holds:
 /opt/revisor/
 ├── compose.yaml      # copied by CI on every deploy
 ├── Caddyfile         # copied by CI on every deploy
+├── backup.sh         # copied by CI on every deploy
+├── .backup-work/     # created by backup.sh; holds a dump only while it uploads
 ├── .env              # created once by you, chmod 600
 └── secrets/
     ├── jwt_private.pem   # owned by uid 10001, chmod 600
@@ -80,6 +84,8 @@ sudo chmod 600 secrets/jwt_private.pem && sudo chmod 644 secrets/jwt_public.pem
 sudo chgrp 10001 secrets && sudo chmod 750 secrets
 ```
 
+The VM also needs `.env`'s backup settings — see step 7.
+
 ### 5. The CI deploy key
 
 On your own machine:
@@ -111,7 +117,44 @@ to approve each deploy). Then under Secrets and variables → Actions:
 Then push to `main` (or run the workflow by hand: Actions → Backend → Run workflow). The first
 start takes a minute or two: Flyway creates the schema and Caddy obtains the certificate.
 
-### 7. The first admin
+### 7. Backups
+
+Nightly at ~03:30 (VM time): `pg_dump` → integrity check → encrypted [restic](https://restic.net)
+snapshot in object storage → retention (7 daily, 4 weekly, 6 monthly) → the local dump is deleted.
+Weekly, restic also verifies a sample of the stored data. Any S3-compatible storage works; Backblaze
+B2 (DEPLOYMENT.md) is the example here.
+
+1. **Bucket:** in B2, create a **private** bucket (e.g. `revisor-backups`), then an **application
+   key restricted to that bucket** with read and write access. Note its `keyID` and
+   `applicationKey`, and the bucket's S3 endpoint (e.g. `s3.us-west-004.backblazeb2.com`).
+2. **`.env`** on the VM — add (see `.env.example`):
+   ```
+   RESTIC_REPOSITORY=s3:https://s3.us-west-004.backblazeb2.com/revisor-backups/revisor
+   RESTIC_PASSWORD=<openssl rand -base64 32>
+   AWS_ACCESS_KEY_ID=<keyID>
+   AWS_SECRET_ACCESS_KEY=<applicationKey>
+   ```
+   **Save `RESTIC_PASSWORD` in your password manager too.** Backups are encrypted with it: if the
+   VM is lost and this password with it, the backups are unreadable.
+3. **Create the repository and take the first backup**, as `deploy` in `/opt/revisor`:
+   ```bash
+   ./backup.sh init
+   ./backup.sh
+   ./backup.sh snapshots
+   ```
+4. **Schedule it:**
+   ```bash
+   sudo cp systemd/revisor-backup.service systemd/revisor-backup.timer /etc/systemd/system/
+   sudo systemctl daemon-reload && sudo systemctl enable --now revisor-backup.timer
+   systemctl list-timers revisor-backup.timer     # next run
+   ```
+   (Copy the two unit files from the repo's `deploy/systemd/` first — CI doesn't ship them.)
+5. **Optional, recommended — know when it stops:** create a check at a dead-man's-switch service
+   such as [healthchecks.io](https://healthchecks.io) (daily period, a few hours' grace) and put its
+   ping URL in `.env` as `BACKUP_PING_URL`. It's pinged on start, success and failure; a night with
+   no success ping alerts you.
+
+### 8. The first admin
 
 Sign up through the app, then promote that account with a Flyway migration as described in
 `backend/src/main/resources/db/migration/admin-bootstrap.sql.template`. Commit it; the next deploy
@@ -146,7 +189,29 @@ keep running the pinned version.
 **Rotate the JWT keys** (e.g. suspected leak): regenerate both files as in step 4, then
 `docker compose restart backend`. Every user is signed out.
 
-**Backups** are not automated yet — DEPLOYMENT.md plans a scheduled `pg_dump` to object storage.
-Until then, before anything risky:
-`docker compose exec -T postgres pg_dump -U revisor revisor | gzip > revisor-$(date +%F).sql.gz`,
-and copy the file off the VM.
+**Backups:** `./backup.sh` takes one now (do it before anything risky). Logs:
+`journalctl -u revisor-backup`. List them: `./backup.sh snapshots`. Always run restic through
+`backup.sh` (any restic command works: `./backup.sh <command>`), never `docker compose run backup`
+directly — the script prepares the directory the container mounts.
+
+**Restore** — replaces the whole database with a snapshot (`latest`, or an ID from `snapshots`).
+Everything written since that snapshot is lost, so take a backup first if the database is still
+readable:
+
+```bash
+docker compose stop backend
+./backup.sh dump --host revisor --tag postgres latest /dump/revisor.dump > restore.dump
+docker compose exec -T postgres dropdb -U revisor --if-exists revisor
+docker compose exec -T postgres createdb -U revisor revisor
+docker compose exec -T postgres pg_restore -U revisor -d revisor --no-owner --exit-on-error < restore.dump
+rm restore.dump
+docker compose start backend
+```
+
+On a fresh VM (the old one is gone): do steps 1–6, put the **same** `RESTIC_*` values in `.env`,
+start only Postgres (`docker compose up -d postgres`), run the restore above from the `dump` line
+(skip `dropdb`/`createdb` — the new database is empty), then `docker compose up -d`.
+
+Practise a restore now and then (e.g. into a throwaway VM): a backup that has never been restored
+is a hope, not a backup. This exact procedure was verified by destroying the Postgres volume of a
+local copy of the stack and restoring it.

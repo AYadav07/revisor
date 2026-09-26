@@ -134,10 +134,25 @@ their health result) in the Actions history, and no long-lived registry credenti
 via Cloudflare Pages (see above) — no shared pipeline between the two.
 
 ## Backups
-Postgres data in a named volume; a scheduled `pg_dump` (cron or a small scheduled
-container) pushed to cheap object storage (e.g. Backblaze B2). Worth keeping backup size
-in mind on the e2-micro's limited local disk — push to object storage promptly rather
-than accumulating dumps locally.
+Postgres data lives in a named volume; `deploy/backup.sh`, run nightly by a systemd timer on the
+VM (`deploy/systemd/`), backs it up to object storage (Backblaze B2 or any S3-compatible store —
+setup and restore in `deploy/README.md`):
+1. `pg_dump --format=custom --compress=0` to a local file, then `pg_restore --list` on it — a failed
+   or truncated dump fails the run instead of being saved.
+2. **restic** (official image, run on demand from the compose file's `backup` profile — never
+   started by `docker compose up`) uploads it as an encrypted snapshot. Encryption happens on the VM,
+   so the provider never sees user data. Uncompressed dumps let restic deduplicate unchanged tables
+   between nights, so storage grows with changes rather than database size.
+3. Retention: 7 daily, 4 weekly, 6 monthly snapshots, pruned each run; a weekly `restic check` reads
+   back a 10% sample of the stored data.
+4. The local dump is deleted immediately — nothing accumulates on the e2-micro's small disk.
+5. An optional dead-man's-switch ping (`BACKUP_PING_URL`, e.g. healthchecks.io) alerts when a night
+   passes without a successful backup.
+
+The encryption password must also be kept outside the VM (a password manager) — without it the
+backups can't be read. The restore procedure was verified end to end: the Postgres volume of a local
+copy of the stack was destroyed and restored from a snapshot, with logins, data and ID sequences
+intact.
 
 ## Observability
 Spring Boot Actuator (`/actuator/health`, plus `/actuator/health/liveness` and `/readiness`) as the

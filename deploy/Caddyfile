@@ -3,9 +3,8 @@
 {$API_DOMAIN} {
 	encode zstd gzip
 
-	reverse_proxy backend:8080 {
-		# Caddy sets X-Forwarded-For itself, which the backend trusts for the signup rate limit.
-		health_uri /actuator/health/readiness
-		health_interval 30s
-	}
+	# Caddy sets X-Forwarded-For itself (replacing any client-sent value), which the backend trusts
+	# for the signup rate limit. No active health check: with one backend it can't route around a
+	# failure, and its first probe during startup would add up to a check interval of 503s per deploy.
+	reverse_proxy backend:8080
 }

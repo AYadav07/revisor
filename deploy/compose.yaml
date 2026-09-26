@@ -93,11 +93,40 @@ services:
     networks: [web]
     mem_limit: 128m
 
+  # Not a long-running service: backup.sh runs it on demand (`docker compose run backup ...`), and the
+  # profile keeps `docker compose up` from ever starting it. restic encrypts before uploading.
+  backup:
+    image: restic/restic:0.18.1
+    profiles: [backup]
+    logging: *logging
+    environment:
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:-}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:-}
+      # S3-compatible storage (Backblaze B2's S3 API, AWS S3, ...): the bucket's access key.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      RESTIC_CACHE_DIR: /cache
+    volumes:
+      # Must already exist (backup.sh creates it): if Docker created it, it would be root-owned and
+      # every later backup would fail to write its dump.
+      - type: bind
+        source: ./.backup-work
+        target: /dump
+        read_only: true
+        bind:
+          create_host_path: false
+      - restic_cache:/cache
+    # Internet access only — not on the web or db networks.
+    networks: [backup]
+    mem_limit: 256m
+
 networks:
   web:
   db:
+  backup:
 
 volumes:
   pgdata:
+  restic_cache:
   caddy_data:
   caddy_config:

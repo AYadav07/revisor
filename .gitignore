@@ -42,3 +42,4 @@ out/
 *.pem
 /deploy/.env
 /deploy/secrets/
+/deploy/.backup-work/
