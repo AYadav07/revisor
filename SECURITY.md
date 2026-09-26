@@ -169,6 +169,23 @@ by default.
 The security chain only permits those paths while springdoc is enabled, so in production they are
 ordinary protected URLs (401), not open holes.
 
+## Frontend security headers
+Cloudflare Pages serves the app with the headers in `dist/_headers`, generated at build time by
+`frontend/scripts/cloudflarePages.ts` (so the API origin comes from `VITE_API_URL`, never hand-edited):
+- **Content-Security-Policy** — `script-src 'self'` (no inline scripts, no eval), `connect-src` limited
+  to the app itself and the API origin, fonts only from Google Fonts, `object-src 'none'`,
+  `frame-ancestors 'none'`, `base-uri`/`form-action 'self'`. `style-src` allows `'unsafe-inline'`
+  because the toast library injects a `<style>` element; that is the one relaxation. Zod runs in
+  `jitless` mode (`src/lib/zodConfig.ts`) so it never probes for eval.
+- **Strict-Transport-Security** (1 year, this host only), **X-Content-Type-Options: nosniff**,
+  **X-Frame-Options: DENY**, **Referrer-Policy: strict-origin-when-cross-origin**, and a
+  Permissions-Policy that turns off camera, microphone, geolocation and payment.
+
+Verified by loading the built app in headless Chrome behind these headers and listening for
+`securitypolicyviolation` events: none on load or form validation (a deliberately stricter control
+policy did report violations, so the check is live). A Cloudflare build without an `https://`
+`VITE_API_URL` fails instead of shipping an app that points at `localhost`.
+
 ## Actuator
 Only `GET /actuator/health` (and the `/liveness` and `/readiness` probes) is exposed, publicly and
 with no component details — enough for Caddy/Docker health checks, nothing about the environment.

@@ -87,9 +87,18 @@ there) keeps DNS for both subdomains in one dashboard, but this isn't a hard req
 any registrar works as long as DNS can point `app.` and `api.` subdomains at Cloudflare
 Pages and the backend VM respectively.
 
-**Build config:** the frontend needs `VITE_API_URL=https://api.<domain>` injected
-at build time by Cloudflare Pages (per-environment: a different value for preview builds
-if needed).
+**Build config** (Pages project settings — full steps in `frontend/README.md`): root directory
+`frontend`, build command `npm run build`, output directory `dist`, Node from `frontend/.nvmrc`.
+`VITE_API_URL=https://api.<domain>` is injected at build time; the build **fails** on Cloudflare if it
+is missing or not `https://` (`frontend/scripts/cloudflarePages.ts`), rather than shipping an app that
+calls `localhost`. The same build step writes `dist/_headers`: the CSP and other security headers
+(SECURITY.md), with `connect-src` derived from `VITE_API_URL`, and long-lived caching for the
+content-hashed `/assets/*`. With no `404.html` in the output, Pages serves `index.html` for every
+unknown path, which is the SPA fallback React Router needs.
+
+**Preview deployments** (`<hash>.<project>.pages.dev`) build fine but can't sign in: they aren't on
+the custom domain, so the `SameSite=Strict` cookies are never sent and the backend's CORS allowlist
+doesn't include them. Use them for visual review only.
 
 **Deploy flow:** Cloudflare Pages watches the repo directly and rebuilds/redeploys on
 every push to `main` (or a configured branch) — no custom CI/CD pipeline needed for the
