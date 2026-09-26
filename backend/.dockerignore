@@ -1,0 +1,10 @@
+# Keep the build context small, and keep secrets out of it entirely — nothing here may end up in an
+# image layer (SECURITY.md, "Secrets management").
+build/
+.gradle/
+.idea/
+*.iml
+secrets/
+.env
+*.pem
+docker-compose.yml

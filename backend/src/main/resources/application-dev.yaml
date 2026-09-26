@@ -8,9 +8,11 @@ spring:
 
 app:
   jwt:
-#    private-key-path: ${JWT_PRIVATE_KEY_PATH}
-#    public-key-path: ${JWT_PUBLIC_KEY_PATH}
-    generate-ephemeral-keys: true
+    # A persistent pair, so sessions survive a restart. Create it once with
+    # scripts/generate-jwt-keys.sh (writes to the gitignored secrets/). The defaults are relative to
+    # the backend directory, where ./gradlew bootRun runs; the env vars override them.
+    private-key-path: ${JWT_PRIVATE_KEY_PATH:secrets/jwt_private.pem}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:secrets/jwt_public.pem}
   cookies:
     secure: false
   cors:

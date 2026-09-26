@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -12,13 +13,19 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** The reuse-detection family revoke is a bulk @Modifying update; this checks it actually commits against Postgres. */
+/**
+ * The reuse-detection family revoke and the cleanup purge are bulk @Modifying queries; this checks they
+ * actually commit against Postgres. Each runs in its own transaction, as it does in the services, so
+ * the assertions afterwards read committed data rather than an uncommitted test transaction.
+ */
 class RefreshTokenRepositoryPostgresTest extends PostgresIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
+    @Autowired
+    private TransactionTemplate transaction;
 
     private Long userId;
 
@@ -35,7 +42,7 @@ class RefreshTokenRepositoryPostgresTest extends PostgresIntegrationTest {
         Long inFamily2 = refreshTokenRepository.save(token(family, "hash-2")).getId();
         Long otherFamily = refreshTokenRepository.save(token(UUID.randomUUID(), "hash-3")).getId();
 
-        int updated = refreshTokenRepository.revokeAllByFamilyId(family, Instant.now());
+        int updated = transaction.execute(status -> refreshTokenRepository.revokeAllByFamilyId(family, Instant.now()));
 
         assertThat(updated).isEqualTo(2);
         assertThat(refreshTokenRepository.findById(inFamily1)).get().extracting(RefreshToken::getRevokedAt).isNotNull();
@@ -56,14 +63,14 @@ class RefreshTokenRepositoryPostgresTest extends PostgresIntegrationTest {
     void deleteExpiredOrRevoked_removesOnlyUnusableTokens_leavingActiveOnesUntouched() {
         userId = userRepository.save(new User("Ann", "ann@example.com", "hash", Role.USER, true, "UTC")).getId();
         Instant now = Instant.now();
-        Long revoked = refreshTokenRepository.save(token(UUID.randomUUID(), "revoked")).getId();
-        refreshTokenRepository.findById(revoked).orElseThrow().setRevokedAt(now);
-        refreshTokenRepository.flush();
+        RefreshToken revokedToken = token(UUID.randomUUID(), "revoked");
+        revokedToken.setRevokedAt(now);
+        Long revoked = refreshTokenRepository.save(revokedToken).getId();
         Long expired = refreshTokenRepository.save(
                 new RefreshToken(userId, UUID.randomUUID(), "expired", now.minusSeconds(1))).getId();
         Long active = refreshTokenRepository.save(token(UUID.randomUUID(), "active")).getId();
 
-        int deleted = refreshTokenRepository.deleteExpiredOrRevoked(now);
+        int deleted = transaction.execute(status -> refreshTokenRepository.deleteExpiredOrRevoked(now));
 
         assertThat(deleted).isEqualTo(2);
         assertThat(refreshTokenRepository.findById(revoked)).isEmpty();
