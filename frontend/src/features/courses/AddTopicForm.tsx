@@ -17,7 +17,7 @@ interface AddTopicFormProps {
 
 const GENERIC_ERROR = "Couldn't add the topic. Please try again."
 
-/** A one-line form at the foot of the tree for adding a topic (UI_DESIGN.md §4). */
+/** A one-line form for adding a topic, in the course page's side panel (UI_DESIGN.md §4). */
 export function AddTopicForm({ courseId, nextOrderIndex }: AddTopicFormProps) {
   const createTopic = useCreateTopic(courseId)
   const [formError, setFormError] = useState<string | null>(null)
@@ -40,7 +40,7 @@ export function AddTopicForm({ courseId, nextOrderIndex }: AddTopicFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="mt-6 space-y-2">
+      <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-2">
         {formError && (
           <Alert variant="destructive">
             <AlertDescription>{formError}</AlertDescription>

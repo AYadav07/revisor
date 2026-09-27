@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Repeat2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,8 +26,14 @@ export function AuthLayout({
 }: AuthLayoutProps) {
   useDocumentTitle(title)
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted p-4">
-      <Card className="w-full max-w-sm">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-4">
+      <p className="flex items-center gap-2 text-xl font-semibold">
+        <span aria-hidden className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <Repeat2 className="size-5" />
+        </span>
+        Revisor
+      </p>
+      <Card className="w-full max-w-sm shadow-md">
         <CardHeader>
           <CardTitle className="text-2xl">{title}</CardTitle>
           <CardDescription>{description}</CardDescription>

@@ -32,6 +32,7 @@ export function TopicAccordion({ courseId, topics, onAction }: TopicAccordionPro
 
   return (
     <Accordion
+      className="space-y-3"
       type="multiple"
       value={open}
       onValueChange={(next) => setCollapsed(new Set(allIds.filter((id) => !next.includes(id))))}
@@ -39,8 +40,9 @@ export function TopicAccordion({ courseId, topics, onAction }: TopicAccordionPro
       {topics.map((topic) => {
         const { learned, total } = topicProgress(topic)
         return (
-          <AccordionItem key={topic.id} value={String(topic.id)}>
-            <AccordionTrigger>
+          // Each topic is its own panel on the canvas (UI_DESIGN.md §4).
+          <AccordionItem key={topic.id} value={String(topic.id)} className="rounded-xl border bg-card px-5 shadow-sm last:border-b">
+            <AccordionTrigger className="text-base hover:no-underline">
               <span className="flex-1 truncate text-left">{topic.title}</span>
               <span className="text-sm font-normal text-muted-foreground">
                 {learned}/{total} learned
@@ -63,7 +65,7 @@ export function TopicAccordion({ courseId, topics, onAction }: TopicAccordionPro
                   ))}
                 </ul>
               )}
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-2 border-t pt-3">
                 <Button variant="outline" size="sm" onClick={() => onAction({ type: 'addSubtopic', topic })}>
                   Add subtopic
                 </Button>

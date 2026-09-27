@@ -67,8 +67,9 @@ export function ReviewPage() {
     else setFinished(true)
   }
 
+  // A deliberately narrow, centered column: reviewing is reading, and long lines are hard to recall from.
   return (
-    <>
+    <div className="mx-auto max-w-3xl">
       <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2">
         <Link to={ROUTES.dashboard}>Exit review</Link>
       </Button>
@@ -80,6 +81,6 @@ export function ReviewPage() {
         onGraded={() => advance(true)}
         onSkip={() => advance(false)}
       />
-    </>
+    </div>
   )
 }

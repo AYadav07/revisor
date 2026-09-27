@@ -1,3 +1,4 @@
+import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import { lazy, type ReactElement } from 'react'
 import userEvent from '@testing-library/user-event'
@@ -5,12 +6,19 @@ import { ThemeProvider } from 'next-themes'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { toast } from 'sonner'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError } from '@/api'
+import { ApiError, dashboardApi } from '@/api'
 import { AuthContext, type AuthContextValue } from '@/features/auth/AuthContext'
 import { ann, authValue } from '@/test/auth'
+import { createTestQueryClient } from '@/test/render'
 import { AppShell } from './AppShell'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), info: vi.fn() } }))
+vi.mock('@/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api')>()
+  return { ...actual, dashboardApi: { summary: vi.fn(), progress: vi.fn(), due: vi.fn() } }
+})
+
+const dashboard = vi.mocked(dashboardApi)
 
 const admin = { ...ann, id: 2, name: 'Root', email: 'root@example.com', role: 'ADMIN' as const }
 
@@ -18,24 +26,32 @@ beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   document.documentElement.removeAttribute('data-theme')
+  dashboard.progress.mockResolvedValue([
+    { courseId: 1, courseTitle: 'System Design', learnedCount: 4, totalCount: 9 },
+    { courseId: 2, courseTitle: 'DSA', learnedCount: 0, totalCount: 0 },
+  ])
 })
 
 function renderShell(options: { path?: string; auth?: Partial<AuthContextValue>; page?: ReactElement } = {}) {
   const auth = authValue({ status: 'authenticated', user: ann, ...options.auth })
+  const queryClient = createTestQueryClient()
   const view = () => (
-    <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
-      <AuthContext.Provider value={auth}>
-        <MemoryRouter initialEntries={[options.path ?? '/dashboard']}>
-          <Routes>
-            <Route element={<AppShell />}>
-              <Route path="/dashboard" element={options.page ?? <p>dashboard page</p>} />
-              <Route path="/courses" element={<p>courses page</p>} />
-              <Route path="/admin/users" element={<p>admin page</p>} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </AuthContext.Provider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
+        <AuthContext.Provider value={auth}>
+          <MemoryRouter initialEntries={[options.path ?? '/dashboard']}>
+            <Routes>
+              <Route element={<AppShell />}>
+                <Route path="/dashboard" element={options.page ?? <p>dashboard page</p>} />
+                <Route path="/courses" element={<p>courses page</p>} />
+                <Route path="/courses/:id" element={<p>course page</p>} />
+                <Route path="/admin/users" element={<p>admin page</p>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </AuthContext.Provider>
+      </ThemeProvider>
+    </QueryClientProvider>
   )
   const utils = render(view())
   return { user: userEvent.setup(), auth, utils, view }
@@ -72,6 +88,46 @@ describe('navigation', () => {
 
     expect(screen.getByText('courses page')).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
+  })
+})
+
+describe('sidebar courses', () => {
+  it('lists every course with how much of it is learned, linking to it', async () => {
+    renderShell()
+    const courses = screen.getByRole('region', { name: 'Your courses' })
+
+    const systemDesign = await within(courses).findByRole('link', { name: /System Design/ })
+    expect(systemDesign).toHaveAttribute('href', '/courses/1')
+    expect(systemDesign).toHaveTextContent('4/9')
+    expect(within(courses).getByRole('link', { name: /DSA/ })).toHaveTextContent('0/0')
+  })
+
+  it('marks the course being viewed', async () => {
+    renderShell({ path: '/courses/1' })
+    const courses = screen.getByRole('region', { name: 'Your courses' })
+
+    expect(await within(courses).findByRole('link', { name: /System Design/ })).toHaveAttribute('aria-current', 'page')
+    expect(within(courses).getByRole('link', { name: /DSA/ })).not.toHaveAttribute('aria-current')
+  })
+
+  it('says so when there are no courses yet', async () => {
+    dashboard.progress.mockResolvedValue([])
+    renderShell()
+
+    expect(await screen.findByText('No courses yet.')).toBeInTheDocument()
+  })
+})
+
+describe('menu on small screens', () => {
+  it('opens the same navigation in a sheet, and closes it once a link is followed', async () => {
+    const { user } = renderShell()
+
+    await user.click(screen.getByRole('button', { name: 'Open menu' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Menu' })
+    await user.click(within(within(sheet).getByRole('navigation', { name: 'Main' })).getByRole('link', { name: 'Courses' }))
+
+    expect(await screen.findByText('courses page')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Menu' })).not.toBeInTheDocument()
   })
 })
 

@@ -6,12 +6,14 @@ import { EmptyState } from '@/components/EmptyState'
 import { LoadError } from '@/components/LoadError'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { parseIdParam } from '@/lib/ids'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { ROUTES } from '@/routes'
 import { AddSubtopicDialog } from './AddSubtopicDialog'
 import { AddTopicForm } from './AddTopicForm'
-import { courseProgress, nextTopicOrderIndex, type TreeAction } from './courseTree'
+import { nextTopicOrderIndex, type TreeAction } from './courseTree'
+import { CourseSummary } from './CourseSummary'
 import { DeleteCourseDialog, DeleteSubtopicDialog, DeleteTopicDialog } from './DeleteDialogs'
 import { EditCourseDialog } from './EditCourseDialog'
 import { EditSubtopicDialog } from './EditSubtopicDialog'
@@ -82,17 +84,29 @@ export function CourseDetailPage() {
               </div>
             }
           />
-          <p className="mb-4 text-sm text-muted-foreground">
-            {courseProgress(tree).learned} of {courseProgress(tree).total} subtopics learned
-          </p>
+          <div className="grid items-start gap-6 xl:grid-cols-3">
+            <div className="xl:col-span-2">
+              {tree.topics.length === 0 ? (
+                <EmptyState title="No topics yet" description="Add your first topic, then fill it with subtopics." />
+              ) : (
+                <TopicAccordion courseId={tree.id} topics={tree.topics} onAction={setAction} />
+              )}
+            </div>
 
-          {tree.topics.length === 0 ? (
-            <EmptyState title="No topics yet" description="Add your first topic below, then fill it with subtopics." />
-          ) : (
-            <TopicAccordion courseId={tree.id} topics={tree.topics} onAction={setAction} />
-          )}
+            {/* After the topics on small screens; the right-hand column on wide ones. */}
+            <aside className="space-y-4">
+              <CourseSummary tree={tree} />
+              <Card className="gap-4">
+                <CardHeader>
+                  <CardTitle>Add a topic</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <AddTopicForm courseId={tree.id} nextOrderIndex={nextTopicOrderIndex(tree.topics)} />
+                </CardContent>
+              </Card>
+            </aside>
+          </div>
 
-          <AddTopicForm courseId={tree.id} nextOrderIndex={nextTopicOrderIndex(tree.topics)} />
           <AddSubtopicDialog
             courseId={tree.id}
             topic={action?.type === 'addSubtopic' ? action.topic : null}

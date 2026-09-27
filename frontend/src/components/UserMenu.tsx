@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut, Monitor, Moon, Sun } from 'lucide-react'
+import { ChevronsUpDown, LogOut, Monitor, Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -20,7 +20,7 @@ const THEMES = [
   { value: 'system', label: 'System', Icon: Monitor },
 ] as const
 
-/** The AppShell's account menu: who you are, the theme toggle, and sign-out (UI_DESIGN.md §3/§5). */
+/** The sidebar's account menu: who you are, the theme toggle, and sign-out (UI_DESIGN.md §3/§5). */
 export function UserMenu() {
   const { user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
@@ -39,12 +39,19 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="max-w-40 gap-1">
-          <span className="truncate">{user.name}</span>
-          <ChevronDown aria-hidden />
+        <Button variant="ghost" className="h-auto w-full justify-start gap-3 px-2 py-2">
+          {/* The initial is decoration: the button's accessible name is just the user's name. */}
+          <span
+            aria-hidden
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary"
+          >
+            {user.name.trim().charAt(0).toUpperCase()}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-left">{user.name}</span>
+          <ChevronsUpDown aria-hidden className="text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent side="top" align="start" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <span className="block truncate font-medium">{user.name}</span>
           <span className="block truncate text-xs text-muted-foreground">{user.email}</span>

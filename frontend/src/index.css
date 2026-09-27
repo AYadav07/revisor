@@ -9,11 +9,15 @@
  *
  * card/popover/accent/ring/input aren't in UI_DESIGN.md's token list but are required by
  * shadcn/ui's primitives (Dialog, Select, Card, ...) — each is derived from a token the
- * doc *does* define (card = background, popover = background, accent = muted, ring =
- * primary, input = border) rather than introducing a new hue of its own.
+ * doc *does* define (accent = muted, ring = primary, input = border) rather than
+ * introducing a new hue of its own.
+ *
+ * Depth (UI_DESIGN.md §2): `background` is the page canvas, a cool tint in light mode, and
+ * `card` is the surface panels, the sidebar and dialogs sit on — white in light mode, a step
+ * lighter than the canvas in dark mode. The contrast between the two is what groups content.
  */
 :root {
-  --background: 0 0% 100%;
+  --background: 220 27% 96%;
   --foreground: 222 47% 11%;
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
@@ -27,8 +31,8 @@
   --accent-foreground: 222 47% 11%;
   --secondary: 210 40% 96%;
   --secondary-foreground: 222 47% 11%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
+  --border: 220 18% 88%;
+  --input: 220 18% 88%;
   --ring: 221 83% 53%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
@@ -40,11 +44,11 @@
 }
 
 :root[data-theme='dark'] {
-  --background: 222 47% 11%;
+  --background: 224 47% 7%;
   --foreground: 210 40% 98%;
-  --card: 222 47% 11%;
+  --card: 222 44% 11%;
   --card-foreground: 210 40% 98%;
-  --popover: 222 47% 11%;
+  --popover: 222 44% 11%;
   --popover-foreground: 210 40% 98%;
   --primary: 217 91% 60%;
   --primary-foreground: 222 47% 11%;
@@ -54,8 +58,8 @@
   --accent-foreground: 210 40% 98%;
   --secondary: 217 33% 17%;
   --secondary-foreground: 210 40% 98%;
-  --border: 217 33% 20%;
-  --input: 217 33% 20%;
+  --border: 217 30% 19%;
+  --input: 217 30% 21%;
   --ring: 217 91% 60%;
   --destructive: 0 72% 55%;
   --destructive-foreground: 0 0% 100%;

@@ -190,6 +190,11 @@ describe('the tree', () => {
     expect(screen.getByRole('link', { name: /Review .Overdue./ })).toHaveAttribute('href', '/subtopics/101/review')
     expect(screen.queryByRole('link', { name: /Review .Tomorrow./ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /Review .Not learned./ })).not.toBeInTheDocument()
+
+    // The row's state is spelled out too, not only colored.
+    expect(within(screen.getByText('Due today', { selector: 'p' }).closest('li')!).getByText('Due today', { selector: '[data-slot=badge]' })).toBeInTheDocument()
+    expect(within(screen.getByText('Overdue', { selector: 'p' }).closest('li')!).getByText('Overdue', { selector: '[data-slot=badge]' })).toBeInTheDocument()
+    expect(within(screen.getByText('Tomorrow', { selector: 'p' }).closest('li')!).getByText('Learned')).toBeInTheDocument()
   })
 
   it('collapses and re-expands a topic', async () => {

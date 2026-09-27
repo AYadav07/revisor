@@ -27,13 +27,14 @@ dark mode since both are defined as alternate values for the same variable names
 ```css
 /* src/index.css */
 :root {
-  --background: 0 0% 100%;
+  --background: 220 27% 96%;       /* page canvas — a cool tint, so white panels stand off it */
+  --card: 0 0% 100%;               /* panels, sidebar, dialogs */
   --foreground: 222 47% 11%;
   --primary: 221 83% 53%;          /* main brand/action color */
   --primary-foreground: 0 0% 100%;
   --muted: 210 40% 96%;
   --muted-foreground: 215 16% 47%;
-  --border: 214 32% 91%;
+  --border: 220 18% 88%;
   --destructive: 0 84% 60%;        /* delete actions, overdue state */
   --success: 142 71% 45%;          /* learned / on-schedule state */
   --warning: 38 92% 50%;           /* due soon / low ease factor */
@@ -41,18 +42,24 @@ dark mode since both are defined as alternate values for the same variable names
 }
 
 :root[data-theme="dark"] {
-  --background: 222 47% 11%;
+  --background: 224 47% 7%;
+  --card: 222 44% 11%;             /* a step lighter than the canvas */
   --foreground: 210 40% 98%;
   --primary: 217 91% 60%;
   --primary-foreground: 222 47% 11%;
   --muted: 217 33% 17%;
   --muted-foreground: 215 20% 65%;
-  --border: 217 33% 20%;
+  --border: 217 30% 19%;
   --destructive: 0 72% 55%;
   --success: 142 60% 50%;
   --warning: 38 85% 55%;
 }
 ```
+**Depth:** content is grouped by surface, not by lines — panels (`card`) sit on a tinted
+canvas (`background`), with a light border and a small shadow. No gradients, no decorative
+shadows; the canvas/panel contrast does the work. (Revised from an all-white first version,
+where page, cards and nav were indistinguishable.)
+
 Theme toggle: `data-theme` attribute on `<html>`, persisted in `localStorage`, defaulting
 to the OS preference (`prefers-color-scheme`) on first visit.
 
@@ -60,7 +67,14 @@ to the OS preference (`prefers-color-scheme`) on first visit.
 - `success` (green) → subtopic learned / on schedule
 - `warning` (amber) → due soon / weak ease factor
 - `destructive` (red) → overdue / delete actions
-- `primary` → main actions (Learn, Review, Save, Sign in)
+- `primary` → main actions (Review, Save, Sign in)
+
+Every subtopic row starts with a small **state marker** — hollow (not started), `success`
+(learned, next review in the future), `warning` (due today), `destructive` (overdue) — and
+spells the state out in a badge, so color is never the only signal. The course page's
+progress panel lists the same four states with the same markers, doubling as the legend.
+"Mark as learned" is an outline button: the loud, filled `primary` button on a row is
+reserved for "Review", so what's due is what catches the eye.
 
 **Typography:** Inter (Google Fonts, self-hostable later), Tailwind's default type scale
 (`text-sm` → `text-2xl`) — no custom sizes invented per-page.
@@ -69,9 +83,17 @@ to the OS preference (`prefers-color-scheme`) on first visit.
 scale.
 
 ## 3. Layout / navigation
-- **`AppShell`** — persistent layout for all authenticated pages: top nav bar (logo,
-  "Dashboard" / "Courses" links, user menu with theme toggle + logout).
-- **`AuthLayout`** — minimal centered-card layout for `/login` and `/signup`, no nav.
+- **`AppShell`** — persistent layout for all authenticated pages, **full width** (no max-width
+  container; pages use responsive grids that add columns on wider screens rather than
+  stretching text):
+  - **Large screens (`lg`+):** a fixed left **`Sidebar`** (`w-64`, `bg-card`) with the brand,
+    main navigation (Dashboard, Courses, Admin for admins), **"Your courses"** — every course
+    with a learned/total count and a thin progress bar, linking to it, the current one
+    highlighted — and the user menu (theme toggle + sign out) pinned at the bottom.
+  - **Small screens:** a top bar with a menu button that slides the same sidebar in as a
+    `Sheet`; following a link closes it.
+- **`AuthLayout`** — minimal centered-card layout for `/login` and `/signup`, no nav, brand
+  mark above the card.
 
 ## 4. Pages
 
@@ -83,6 +105,19 @@ scale.
 | `/subtopics/:id/review` | Review-grading flow | `ReviewPrompt`, `QualityGradeButtons`, `RevealButton` |
 | `/dashboard` | Due today/week, progress | `DueList`, `ProgressBar`, `StatTile` |
 | `/admin/users` | Admin only, route-guarded | `UserTable`, `UserStatusBadge` |
+
+**Page layouts:**
+- `/dashboard` — stat tiles in a row (each with an icon in its state color: due today
+  `warning`, overdue `destructive` when non-zero, learned `success`); below, the due list
+  (two-thirds) beside per-course progress (one-third).
+- `/courses` — a grid of course cards, 1 → 2 → 3 → 4 columns as the screen widens, each card
+  showing its learned/total and a progress bar.
+- `/courses/:id` — on `xl` screens, topics (each topic its own panel) in two-thirds of the
+  width and a side panel with the course's progress, the per-state counts and "Add a topic";
+  on smaller screens the side panel follows the topics. On phones a subtopic's actions wrap
+  below its text.
+- `/subtopics/:id/review` — deliberately a centered `max-w-3xl` column: reviewing is reading,
+  and long lines are harder to recall from.
 
 `/courses/:id` fetches the whole tree in one `GET /courses/{id}` call (topics +
 subtopics nested — see API.md) and renders it directly into `TopicAccordion` /
@@ -120,7 +155,9 @@ src/components/ui/
 ├── accordion.tsx         # topic tree
 ├── toast.tsx              # success/error notifications
 ├── skeleton.tsx            # loading states, pairs with TanStack Query
-└── dropdown-menu.tsx       # user menu (theme toggle, logout)
+├── dropdown-menu.tsx       # user menu (theme toggle, logout)
+├── sheet.tsx               # the sidebar on small screens (Radix Dialog, slides in)
+└── progress.tsx            # course progress bars
 ```
 Every feature component is built from these — no feature ever styles a raw HTML element
 directly. This is the mechanism that keeps the whole app visually consistent from one file.
