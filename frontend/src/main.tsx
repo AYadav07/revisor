@@ -3,6 +3,8 @@ import { ThemeProvider } from 'next-themes'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+// Must run before any module that defines a Zod schema — see the file.
+import './lib/zodConfig'
 import './index.css'
 import App from './App.tsx'
 import { createQueryClient } from './lib/queryClient'

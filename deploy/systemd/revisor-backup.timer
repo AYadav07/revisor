@@ -1,0 +1,11 @@
+# Nightly backup. Persistent: a run missed while the VM was off happens at next boot.
+[Unit]
+Description=Nightly Revisor Postgres backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
