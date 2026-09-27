@@ -43,15 +43,20 @@ export function TopicAccordion({ courseId, topics, onAction }: TopicAccordionPro
         const { learned, total } = topicProgress(topic)
         return (
           // Each topic is its own panel on the canvas (UI_DESIGN.md §4).
-          <AccordionItem key={topic.id} value={String(topic.id)} className="rounded-xl border bg-card px-5 shadow-sm last:border-b">
-            <AccordionTrigger className="text-base hover:no-underline">
+          <AccordionItem
+            key={topic.id}
+            value={String(topic.id)}
+            className="overflow-hidden rounded-xl border border-l-4 border-l-primary bg-card shadow-sm last:border-b"
+          >
+            {/* Header row tinted while open, so each topic reads as a titled section. */}
+            <AccordionTrigger className="rounded-none px-5 text-base hover:no-underline data-[state=open]:border-b data-[state=open]:bg-muted/60">
               <span className="flex-1 truncate text-left">{topic.title}</span>
               <span className="flex items-center gap-2 text-sm font-normal text-muted-foreground">
                 <ProgressRing value={percentLearned(learned, total)} />
                 {learned}/{total} learned
               </span>
             </AccordionTrigger>
-            <AccordionContent>
+            <AccordionContent className="px-5 pt-1">
               {topic.subtopics.length === 0 ? (
                 <p className="py-2 text-sm text-muted-foreground">No subtopics yet.</p>
               ) : (

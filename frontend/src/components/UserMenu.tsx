@@ -39,16 +39,19 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-auto w-full justify-start gap-3 px-2 py-2">
+        <Button
+          variant="ghost"
+          className="h-auto w-full justify-start gap-3 px-2 py-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
+        >
           {/* The initial is decoration: the button's accessible name is just the user's name. */}
           <span
             aria-hidden
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-brand-2 font-semibold text-white"
           >
             {user.name.trim().charAt(0).toUpperCase()}
           </span>
           <span className="min-w-0 flex-1 truncate text-left">{user.name}</span>
-          <ChevronsUpDown aria-hidden className="text-muted-foreground" />
+          <ChevronsUpDown aria-hidden className="text-sidebar-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="top" align="start" className="w-56">

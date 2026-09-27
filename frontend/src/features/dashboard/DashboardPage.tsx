@@ -1,6 +1,6 @@
 import { Play } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { PageHeader } from '@/components/PageHeader'
+import { HERO_PRIMARY_BUTTON, HeroHeader } from '@/components/HeroHeader'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/useAuth'
 import { pluralize } from '@/lib/plural'
@@ -33,12 +33,12 @@ export function DashboardPage() {
 
   return (
     <>
-      <PageHeader
+      <HeroHeader
         title="Dashboard"
         description={`${greeting(new Date())}${firstName ? `, ${firstName}` : ''}.${status}`}
         actions={
           firstDue && (
-            <Button asChild size="lg">
+            <Button asChild size="lg" className={HERO_PRIMARY_BUTTON}>
               <Link to={reviewPath(firstDue.subtopicId)}>
                 <Play aria-hidden />
                 Start review
@@ -49,7 +49,8 @@ export function DashboardPage() {
       />
       <div className="space-y-6">
         <StatTiles />
-        <div className="grid items-start gap-6 xl:grid-cols-3">
+        {/* grid-cols-1, not an implicit column: that one would size to its widest row and overflow a phone. */}
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
           <div className="xl:col-span-2">
             <DueList />
           </div>

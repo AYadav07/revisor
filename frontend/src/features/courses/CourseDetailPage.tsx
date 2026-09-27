@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ContentLoading } from '@/components/ContentLoading'
 import { EmptyState } from '@/components/EmptyState'
+import { HERO_BUTTON, HeroHeader } from '@/components/HeroHeader'
 import { LoadError } from '@/components/LoadError'
-import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { parseIdParam } from '@/lib/ids'
@@ -71,29 +71,24 @@ export function CourseDetailPage() {
 
       {tree && (
         <>
-          <PageHeader
-            leading={<CourseAvatar title={tree.title} size="lg" />}
+          <HeroHeader
+            leading={<CourseAvatar title={tree.title} size="lg" className="bg-white/15 text-white" />}
             title={tree.title}
             description={tree.description}
             actions={
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setAction({ type: 'editCourse' })}>
+                <Button variant="outline" size="sm" className={HERO_BUTTON} onClick={() => setAction({ type: 'editCourse' })}>
                   <Pencil aria-hidden />
                   Edit course
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => setAction({ type: 'deleteCourse' })}
-                >
+                <Button variant="outline" size="sm" className={HERO_BUTTON} onClick={() => setAction({ type: 'deleteCourse' })}>
                   <Trash2 aria-hidden />
                   Delete course
                 </Button>
               </div>
             }
           />
-          <div className="grid items-start gap-6 xl:grid-cols-3">
+          <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
             <div className="xl:col-span-2">
               {tree.topics.length === 0 ? (
                 <EmptyState icon={ListTree} title="No topics yet" description="Add your first topic, then fill it with subtopics." />

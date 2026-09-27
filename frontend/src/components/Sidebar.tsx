@@ -25,9 +25,12 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Link
           to={ROUTES.dashboard}
           onClick={onNavigate}
-          className="flex items-center gap-2 rounded-md text-lg font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="flex items-center gap-2.5 rounded-md text-lg font-semibold text-white outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
-          <span aria-hidden className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <span
+            aria-hidden
+            className="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-primary to-brand-2 text-white shadow-md shadow-primary/30"
+          >
             <Repeat2 className="size-5" />
           </span>
           Revisor
@@ -41,7 +44,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             key={to}
             asChild
             variant="ghost"
-            className="w-full justify-start gap-3 aria-[current=page]:bg-primary/10 aria-[current=page]:text-primary"
+            className="w-full justify-start gap-3 text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-white aria-[current=page]:bg-primary aria-[current=page]:text-white aria-[current=page]:shadow-md aria-[current=page]:shadow-primary/25"
           >
             <NavLink
               to={to}
@@ -55,7 +58,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               {to === ROUTES.dashboard && dueNow > 0 && (
                 <span
                   aria-hidden
-                  className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground tabular-nums"
+                  // Amber: the "due" state color, and visible on both the navy and the active blue.
+                  className="ml-auto rounded-full bg-warning px-2 py-0.5 text-xs font-semibold text-warning-foreground tabular-nums"
                 >
                   {dueNow}
                 </span>
@@ -69,7 +73,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <SidebarCourses onNavigate={onNavigate} />
       </div>
 
-      <div className="border-t p-3">
+      <div className="border-t border-sidebar-border p-3">
         <UserMenu />
       </div>
     </div>

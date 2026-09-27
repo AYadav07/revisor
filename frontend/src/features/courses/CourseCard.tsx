@@ -19,9 +19,13 @@ export function CourseCard({ course, progress }: CourseCardProps) {
       to={courseDetailPath(course.id)}
       className="block h-full rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
     >
-      <Card className="h-full gap-4 transition-[border-color,box-shadow] hover:border-primary/40 hover:shadow-md">
-        <CardHeader className="grid-cols-[auto_1fr] items-center gap-x-3">
-          <CourseAvatar title={course.title} className="row-span-2" />
+      <Card className="h-full gap-4 overflow-hidden pt-0 transition-[border-color,box-shadow,translate] hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+        {/* Cover strip in the brand gradient; the badge sits on its lower edge. */}
+        <div aria-hidden className="relative h-16 bg-linear-to-br from-hero-from to-hero-to">
+          <span className="absolute -top-8 -right-6 size-24 rounded-full bg-white/10" />
+        </div>
+        <CardHeader>
+          <CourseAvatar title={course.title} className="relative z-10 -mt-9 mb-1 bg-card text-primary shadow-md ring-4 ring-card" />
           <CardTitle className="truncate text-base">{course.title}</CardTitle>
           {course.description && <CardDescription className="line-clamp-2">{course.description}</CardDescription>}
         </CardHeader>

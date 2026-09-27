@@ -18,19 +18,19 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 border-r bg-card lg:block">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 bg-sidebar lg:block">
         <Sidebar />
       </aside>
 
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-card px-4 lg:hidden">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-2 bg-sidebar px-4 text-white lg:hidden">
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Open menu">
+              <Button variant="ghost" size="icon" aria-label="Open menu" className="hover:bg-sidebar-accent hover:text-white">
                 <Menu aria-hidden />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" aria-describedby={undefined}>
+            <SheetContent side="left" aria-describedby={undefined} className="border-sidebar-border bg-sidebar text-sidebar-foreground">
               <SheetTitle className="sr-only">Menu</SheetTitle>
               <Sidebar onNavigate={() => setMenuOpen(false)} />
             </SheetContent>

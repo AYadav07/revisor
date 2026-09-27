@@ -55,6 +55,21 @@ dark mode since both are defined as alternate values for the same variable names
   --warning: 38 85% 55%;
 }
 ```
+**Color in the structure** (revised again after feedback that the white panels still read as
+an unfinished template): color sits in the app's frame and headers, not only in small accents.
+- **Sidebar** — deep navy in both themes (`--sidebar*` tokens): light text, the active item a
+  solid `primary` pill, the due count an amber (`warning`) badge.
+- **Hero headers** — the dashboard and course pages open on a blue → violet gradient band
+  (`--hero-from` → `--hero-to`, deeper stops than `primary`/`--brand-2` so white text reads in
+  both themes) with the `<h1>`, a line of context and the page's main actions in white.
+- **Stat tiles** — washed and bordered in their state color, with a solid state-colored icon chip.
+- **Course cards** — a gradient cover strip with the course badge sitting on its edge.
+- **Topic panels** — a `primary` left edge and a tinted header row while open.
+- **Sign-in / sign-up** — split screen on wide displays: a gradient brand panel (a one-line
+  pitch and three plain facts about the app) beside the form.
+Everything else — lists, forms, the due list, charts — stays on white panels, so the colored
+frame doesn't compete with the content.
+
 **Depth:** content is grouped by surface, not by lines — panels (`card`) sit on a tinted
 canvas (`background`), with a light border and a small shadow. No gradients, no decorative
 shadows; the canvas/panel contrast does the work. (Revised from an all-white first version,
@@ -86,7 +101,7 @@ scale.
 - **`AppShell`** — persistent layout for all authenticated pages, **full width** (no max-width
   container; pages use responsive grids that add columns on wider screens rather than
   stretching text):
-  - **Large screens (`lg`+):** a fixed left **`Sidebar`** (`w-64`, `bg-card`) with the brand,
+  - **Large screens (`lg`+):** a fixed left **`Sidebar`** (`w-64`, `bg-sidebar`, navy) with the brand,
     main navigation (Dashboard, Courses, Admin for admins), **"Your courses"** — every course
     with a learned/total count and a thin progress bar, linking to it, the current one
     highlighted — and the user menu (theme toggle + sign out) pinned at the bottom.

@@ -41,6 +41,17 @@
   --warning: 38 92% 50%;
   --warning-foreground: 222 47% 11%;
   --radius: 0.5rem;
+  /* Second brand hue: the violet end of the blue → violet brand gradient on hero headers. */
+  --brand-2: 256 76% 58%;
+  /* Hero headers: the brand gradient, kept deep enough that white text reads on every stop. */
+  --hero-from: 221 83% 48%;
+  --hero-to: 256 68% 52%;
+  /* The sidebar is deep navy in both themes: the app's frame, and where its identity lives. */
+  --sidebar: 224 58% 14%;
+  --sidebar-foreground: 214 32% 91%;
+  --sidebar-muted-foreground: 217 20% 64%;
+  --sidebar-accent: 222 40% 22%;
+  --sidebar-border: 222 38% 22%;
 }
 
 :root[data-theme='dark'] {
@@ -67,6 +78,14 @@
   --success-foreground: 222 47% 11%;
   --warning: 38 85% 55%;
   --warning-foreground: 222 47% 11%;
+  --brand-2: 256 80% 66%;
+  --hero-from: 221 70% 36%;
+  --hero-to: 256 52% 40%;
+  --sidebar: 225 55% 5%;
+  --sidebar-foreground: 214 32% 91%;
+  --sidebar-muted-foreground: 217 20% 60%;
+  --sidebar-accent: 222 40% 14%;
+  --sidebar-border: 222 38% 14%;
 }
 
 /* Maps the HSL-component variables above into Tailwind v4's utility namespace, so
@@ -95,6 +114,14 @@
   --color-success-foreground: hsl(var(--success-foreground));
   --color-warning: hsl(var(--warning));
   --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-brand-2: hsl(var(--brand-2));
+  --color-hero-from: hsl(var(--hero-from));
+  --color-hero-to: hsl(var(--hero-to));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-muted-foreground: hsl(var(--sidebar-muted-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-border: hsl(var(--sidebar-border));
 
   --radius-sm: calc(var(--radius) - 0.25rem);
   --radius-md: calc(var(--radius) - 0.125rem);
