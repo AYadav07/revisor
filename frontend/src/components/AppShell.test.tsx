@@ -26,6 +26,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   document.documentElement.removeAttribute('data-theme')
+  dashboard.summary.mockResolvedValue({ dueToday: 0, overdue: 0, totalLearned: 4 })
   dashboard.progress.mockResolvedValue([
     { courseId: 1, courseTitle: 'System Design', learnedCount: 4, totalCount: 9 },
     { courseId: 2, courseTitle: 'DSA', learnedCount: 0, totalCount: 0 },
@@ -115,6 +116,15 @@ describe('sidebar courses', () => {
     renderShell()
 
     expect(await screen.findByText('No courses yet.')).toBeInTheDocument()
+  })
+})
+
+describe('due count', () => {
+  it('badges Dashboard with everything reviewable now', async () => {
+    dashboard.summary.mockResolvedValue({ dueToday: 2, overdue: 1, totalLearned: 4 })
+    renderShell()
+
+    expect(await within(mainNav()).findByRole('link', { name: 'Dashboard, 3 due' })).toBeInTheDocument()
   })
 })
 

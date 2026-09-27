@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { CourseProgress, CourseResponse } from '@/api'
+import { CourseAvatar } from '@/components/CourseAvatar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { percentLearned } from '@/features/dashboard/dashboardStats'
@@ -19,7 +20,8 @@ export function CourseCard({ course, progress }: CourseCardProps) {
       className="block h-full rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
     >
       <Card className="h-full gap-4 transition-[border-color,box-shadow] hover:border-primary/40 hover:shadow-md">
-        <CardHeader>
+        <CardHeader className="grid-cols-[auto_1fr] items-center gap-x-3">
+          <CourseAvatar title={course.title} className="row-span-2" />
           <CardTitle className="truncate text-base">{course.title}</CardTitle>
           {course.description && <CardDescription className="line-clamp-2">{course.description}</CardDescription>}
         </CardHeader>

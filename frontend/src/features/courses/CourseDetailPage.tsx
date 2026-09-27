@@ -1,4 +1,5 @@
-import { ArrowLeft } from 'lucide-react'
+import { CourseAvatar } from '@/components/CourseAvatar'
+import { ArrowLeft, ListTree, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ContentLoading } from '@/components/ContentLoading'
@@ -71,14 +72,22 @@ export function CourseDetailPage() {
       {tree && (
         <>
           <PageHeader
+            leading={<CourseAvatar title={tree.title} size="lg" />}
             title={tree.title}
             description={tree.description}
             actions={
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => setAction({ type: 'editCourse' })}>
+                  <Pencil aria-hidden />
                   Edit course
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setAction({ type: 'deleteCourse' })}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setAction({ type: 'deleteCourse' })}
+                >
+                  <Trash2 aria-hidden />
                   Delete course
                 </Button>
               </div>
@@ -87,7 +96,7 @@ export function CourseDetailPage() {
           <div className="grid items-start gap-6 xl:grid-cols-3">
             <div className="xl:col-span-2">
               {tree.topics.length === 0 ? (
-                <EmptyState title="No topics yet" description="Add your first topic, then fill it with subtopics." />
+                <EmptyState icon={ListTree} title="No topics yet" description="Add your first topic, then fill it with subtopics." />
               ) : (
                 <TopicAccordion courseId={tree.id} topics={tree.topics} onAction={setAction} />
               )}

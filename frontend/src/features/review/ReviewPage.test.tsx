@@ -222,6 +222,38 @@ describe('the recall step', () => {
   })
 })
 
+describe('keyboard', () => {
+  it('reveals with Space and grades with a number key', async () => {
+    review.review.mockResolvedValue(reviewed(1, '2026-10-04'))
+    const { user } = renderPage()
+    await screen.findByRole('button', { name: 'Reveal' })
+
+    await user.keyboard(' ')
+    expect(await screen.findByRole('button', { name: /4 · Good/ })).toBeInTheDocument()
+
+    await user.keyboard('4')
+    await waitFor(() => expect(review.review).toHaveBeenCalledWith(1, 4))
+    await waitFor(() => expect(location()).toBe('/subtopics/2/review'))
+  })
+
+  it('ignores number keys until the notes are revealed', async () => {
+    const { user } = renderPage()
+    await screen.findByRole('button', { name: 'Reveal' })
+
+    await user.keyboard('5')
+
+    expect(review.review).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Reveal' })).toBeInTheDocument()
+  })
+
+  it('shows how far through the session the user is', async () => {
+    const { user } = renderPage()
+    await reveal(user)
+
+    expect(screen.getByRole('progressbar', { name: 'Session progress' })).toBeInTheDocument()
+  })
+})
+
 describe('grading', () => {
   it.each([
     [0, 'Blackout'],

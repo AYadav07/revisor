@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ContentLoading } from '@/components/ContentLoading'
@@ -71,7 +72,10 @@ export function ReviewPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2">
-        <Link to={ROUTES.dashboard}>Exit review</Link>
+        <Link to={ROUTES.dashboard}>
+          <X aria-hidden />
+          Exit review
+        </Link>
       </Button>
       <ReviewCard
         key={items[index].subtopicId}

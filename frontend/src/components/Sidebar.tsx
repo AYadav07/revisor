@@ -4,6 +4,7 @@ import { SidebarCourses } from '@/components/SidebarCourses'
 import { UserMenu } from '@/components/UserMenu'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/useAuth'
+import { useSummary } from '@/features/dashboard/useDashboard'
 import { visibleNavItems } from '@/nav'
 import { ROUTES } from '@/routes'
 
@@ -14,6 +15,9 @@ import { ROUTES } from '@/routes'
  */
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth()
+  // Shares the dashboard's cached summary. Due today plus overdue: everything reviewable right now.
+  const summary = useSummary().data
+  const dueNow = summary ? summary.dueToday + summary.overdue : 0
 
   return (
     <div className="flex h-full flex-col">
@@ -39,9 +43,23 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             variant="ghost"
             className="w-full justify-start gap-3 aria-[current=page]:bg-primary/10 aria-[current=page]:text-primary"
           >
-            <NavLink to={to} onClick={onNavigate}>
+            <NavLink
+              to={to}
+              onClick={onNavigate}
+              // With the due badge showing, name the link explicitly: text from inline elements would
+              // otherwise run together ("Dashboard3").
+              aria-label={to === ROUTES.dashboard && dueNow > 0 ? `${label}, ${dueNow} due` : undefined}
+            >
               <Icon aria-hidden />
               {label}
+              {to === ROUTES.dashboard && dueNow > 0 && (
+                <span
+                  aria-hidden
+                  className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground tabular-nums"
+                >
+                  {dueNow}
+                </span>
+              )}
             </NavLink>
           </Button>
         ))}

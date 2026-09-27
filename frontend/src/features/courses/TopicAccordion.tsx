@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import type { TopicTreeNode } from '@/api'
+import { ProgressRing } from '@/components/ProgressRing'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
+import { percentLearned } from '@/features/dashboard/dashboardStats'
 import { topicProgress, type TreeAction } from './courseTree'
 import { SubtopicRow } from './SubtopicRow'
 import { useLearnSubtopic } from './useCourseTree'
@@ -44,7 +46,8 @@ export function TopicAccordion({ courseId, topics, onAction }: TopicAccordionPro
           <AccordionItem key={topic.id} value={String(topic.id)} className="rounded-xl border bg-card px-5 shadow-sm last:border-b">
             <AccordionTrigger className="text-base hover:no-underline">
               <span className="flex-1 truncate text-left">{topic.title}</span>
-              <span className="text-sm font-normal text-muted-foreground">
+              <span className="flex items-center gap-2 text-sm font-normal text-muted-foreground">
+                <ProgressRing value={percentLearned(learned, total)} />
                 {learned}/{total} learned
               </span>
             </AccordionTrigger>

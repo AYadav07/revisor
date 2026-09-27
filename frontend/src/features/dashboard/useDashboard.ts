@@ -27,3 +27,16 @@ export function useDueList(range: DueRange, page: number) {
       (previousQuery?.queryKey[2] as DueParams | undefined)?.range === range ? previous : undefined,
   })
 }
+
+/** The most due items the forecast reads in one request — the API's page-size cap. */
+export const FORECAST_SIZE = 100
+
+/**
+ * Everything due in the next seven days (overdue included), for the "Coming up" chart. One request
+ * rather than paging: a week of reviews rarely nears the cap, and if it does the chart still shows
+ * the true total (from totalElements) while the later days undercount.
+ */
+export function useForecast() {
+  const params: DueParams = { range: 'week', page: 0, size: FORECAST_SIZE }
+  return useQuery({ queryKey: dashboardKeys.due(params), queryFn: () => dashboardApi.due(params) })
+}

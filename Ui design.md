@@ -106,10 +106,23 @@ scale.
 | `/dashboard` | Due today/week, progress | `DueList`, `ProgressBar`, `StatTile` |
 | `/admin/users` | Admin only, route-guarded | `UserTable`, `UserStatusBadge` |
 
+**Course badges:** every course carries a `CourseAvatar` — its initials on the brand tint —
+in the sidebar, course cards, the course page header and the due list's course groups.
+**One tint for all courses, deliberately:** a distinct color per course was checked with the
+data-viz palette validator and fails — past three hues, some pairs can't be told apart even
+with full color vision — and the candidate hues sit next to the reserved state colors. The
+initials and the name carry identity.
+
 **Page layouts:**
-- `/dashboard` — stat tiles in a row (each with an icon in its state color: due today
+- `/dashboard` — header greets the user by first name with how many reviews are waiting, and
+  a "Start review" action. Stat tiles in a row (each with an icon in its state color: due today
   `warning`, overdue `destructive` when non-zero, learned `success`); below, the due list
-  (two-thirds) beside per-course progress (one-third).
+  (two-thirds, rows grouped under course badges) beside **"Coming up"** — a seven-day review
+  forecast (one bar per day, today including overdue, from `GET /dashboard/due?range=week`;
+  single series in `primary`, hover/focus tooltips, per-day screen-reader labels) — and
+  per-course progress.
+- Sidebar: the Dashboard link carries a count of everything reviewable now (due today +
+  overdue).
 - `/courses` — a grid of course cards, 1 → 2 → 3 → 4 columns as the screen widens, each card
   showing its learned/total and a progress bar.
 - `/courses/:id` — on `xl` screens, topics (each topic its own panel) in two-thirds of the
@@ -117,7 +130,11 @@ scale.
   on smaller screens the side panel follows the topics. On phones a subtopic's actions wrap
   below its text.
 - `/subtopics/:id/review` — deliberately a centered `max-w-3xl` column: reviewing is reading,
-  and long lines are harder to recall from.
+  and long lines are harder to recall from. A session progress bar sits above a flashcard: where
+  the subtopic is from and its title, centered; on reveal, the notes below a rule and the grade
+  buttons, each with a stripe on SM-2's pass/fail line (0–1 `destructive`, 2 `warning` — these
+  reset the schedule — 3–5 `success`). **Keyboard:** Space reveals, 0–5 grades (ignored while
+  typing or with a modifier held), with the keys hinted on screen.
 
 `/courses/:id` fetches the whole tree in one `GET /courses/{id}` call (topics +
 subtopics nested — see API.md) and renders it directly into `TopicAccordion` /

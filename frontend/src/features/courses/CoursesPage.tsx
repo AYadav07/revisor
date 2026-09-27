@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { BookOpen, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { EmptyState } from '@/components/EmptyState'
@@ -54,6 +54,7 @@ export function CoursesPage() {
 
       {data && data.totalElements === 0 && (
         <EmptyState
+          icon={BookOpen}
           title="No courses yet"
           description="Create your first course, then add the topics you want to revise."
           action={createButton}
