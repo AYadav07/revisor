@@ -1,6 +1,8 @@
+import { CalendarCheck2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { DueItem, DueRange } from '@/api'
+import { CourseAvatar } from '@/components/CourseAvatar'
 import { EmptyState } from '@/components/EmptyState'
 import { LoadError } from '@/components/LoadError'
 import { Pagination } from '@/components/Pagination'
@@ -63,6 +65,7 @@ export function DueList() {
 
         {due.data && due.data.totalElements === 0 && (
           <EmptyState
+            icon={CalendarCheck2}
             title="Nothing due"
             description={range === 'today' ? "You're all caught up for today." : "Nothing is due in the next seven days."}
           />
@@ -82,12 +85,13 @@ export function DueList() {
             <div className="space-y-6">
               {groupByCourse(due.data.content).map((group) => (
                 <section key={group.courseId} aria-label={group.courseTitle}>
-                  <h3 className="mb-1 text-sm font-semibold">
+                  <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                    <CourseAvatar title={group.courseTitle} size="sm" />
                     <Link to={courseDetailPath(group.courseId)} className="hover:underline">
                       {group.courseTitle}
                     </Link>
                   </h3>
-                  <ul className="divide-y">
+                  <ul className="space-y-1">
                     {group.items.map((item) => (
                       <DueRow key={item.subtopicId} item={item} />
                     ))}
@@ -116,7 +120,7 @@ function DueRow({ item }: { item: DueItem }) {
   )
 
   return (
-    <li className="flex items-center justify-between gap-3 py-2">
+    <li className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-accent/60">
       <div className="min-w-0">
         <p className="truncate">{title}</p>
         <p className="truncate text-sm text-muted-foreground">{item.topicTitle}</p>

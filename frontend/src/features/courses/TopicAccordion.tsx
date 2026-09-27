@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import type { TopicTreeNode } from '@/api'
+import { ProgressRing } from '@/components/ProgressRing'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Button } from '@/components/ui/button'
+import { percentLearned } from '@/features/dashboard/dashboardStats'
 import { topicProgress, type TreeAction } from './courseTree'
 import { SubtopicRow } from './SubtopicRow'
 import { useLearnSubtopic } from './useCourseTree'
@@ -32,6 +34,7 @@ export function TopicAccordion({ courseId, topics, onAction }: TopicAccordionPro
 
   return (
     <Accordion
+      className="space-y-3"
       type="multiple"
       value={open}
       onValueChange={(next) => setCollapsed(new Set(allIds.filter((id) => !next.includes(id))))}
@@ -39,14 +42,21 @@ export function TopicAccordion({ courseId, topics, onAction }: TopicAccordionPro
       {topics.map((topic) => {
         const { learned, total } = topicProgress(topic)
         return (
-          <AccordionItem key={topic.id} value={String(topic.id)}>
-            <AccordionTrigger>
+          // Each topic is its own panel on the canvas (UI_DESIGN.md §4).
+          <AccordionItem
+            key={topic.id}
+            value={String(topic.id)}
+            className="overflow-hidden rounded-xl border border-l-4 border-l-primary bg-card shadow-sm last:border-b"
+          >
+            {/* Header row tinted while open, so each topic reads as a titled section. */}
+            <AccordionTrigger className="rounded-none px-5 text-base hover:no-underline data-[state=open]:border-b data-[state=open]:bg-muted/60">
               <span className="flex-1 truncate text-left">{topic.title}</span>
-              <span className="text-sm font-normal text-muted-foreground">
+              <span className="flex items-center gap-2 text-sm font-normal text-muted-foreground">
+                <ProgressRing value={percentLearned(learned, total)} />
                 {learned}/{total} learned
               </span>
             </AccordionTrigger>
-            <AccordionContent>
+            <AccordionContent className="px-5 pt-1">
               {topic.subtopics.length === 0 ? (
                 <p className="py-2 text-sm text-muted-foreground">No subtopics yet.</p>
               ) : (
@@ -63,7 +73,7 @@ export function TopicAccordion({ courseId, topics, onAction }: TopicAccordionPro
                   ))}
                 </ul>
               )}
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-2 border-t pt-3">
                 <Button variant="outline" size="sm" onClick={() => onAction({ type: 'addSubtopic', topic })}>
                   Add subtopic
                 </Button>

@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
 import { toast } from 'sonner'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, courseApi, type CourseResponse, type PageResponse } from '@/api'
+import { ApiError, courseApi, dashboardApi, type CourseResponse, type PageResponse } from '@/api'
 import { LocationProbe } from '@/test/LocationProbe'
 import { renderWithProviders } from '@/test/render'
 import { CoursesPage } from './CoursesPage'
@@ -10,11 +10,16 @@ import { courseKeys } from './queryKeys'
 
 vi.mock('@/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api')>()
-  return { ...actual, courseApi: { listCourses: vi.fn(), createCourse: vi.fn() } }
+  return {
+    ...actual,
+    courseApi: { listCourses: vi.fn(), createCourse: vi.fn() },
+    dashboardApi: { summary: vi.fn(), progress: vi.fn(), due: vi.fn() },
+  }
 })
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
 
 const api = vi.mocked(courseApi)
+const dashboard = vi.mocked(dashboardApi)
 
 const systemDesign: CourseResponse = { id: 1, title: 'System Design', description: 'Distributed systems' }
 const dsa: CourseResponse = { id: 2, title: 'DSA', description: null }
@@ -30,6 +35,7 @@ function pagedBy(build: (page: number) => PageResponse<CourseResponse>) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  dashboard.progress.mockResolvedValue([{ courseId: 1, courseTitle: 'System Design', learnedCount: 3, totalCount: 4 }])
 })
 
 function renderPage(route = '/courses') {
@@ -345,5 +351,18 @@ describe('creating a course', () => {
     await waitFor(() =>
       expect(queryClient.getQueryState(courseKeys.list({ page: 1, size: 12 }))?.isInvalidated).toBe(true),
     )
+  })
+})
+
+describe('course progress', () => {
+  it('shows how much of each course is learned, when known', async () => {
+    api.listCourses.mockResolvedValue(pageOf([systemDesign, dsa]))
+    renderWithProviders(<CoursesPage />)
+
+    const card = (await screen.findByRole('link', { name: /System Design/ })) as HTMLElement
+    expect(await within(card).findByText('3 of 4 learned')).toBeInTheDocument()
+    expect(within(card).getByRole('progressbar', { name: 'System Design progress' })).toBeInTheDocument()
+    // No progress entry for DSA: the card simply shows none, rather than a misleading zero.
+    expect(within(screen.getByRole('link', { name: /DSA/ })).queryByRole('progressbar')).not.toBeInTheDocument()
   })
 })

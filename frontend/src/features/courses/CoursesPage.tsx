@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { BookOpen, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { EmptyState } from '@/components/EmptyState'
@@ -7,13 +7,14 @@ import { PageHeader } from '@/components/PageHeader'
 import { Pagination } from '@/components/Pagination'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useProgress } from '@/features/dashboard/useDashboard'
 import { pageFromSearch } from '@/lib/pageParam'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { CourseCard } from './CourseCard'
 import { CreateCourseDialog } from './CreateCourseDialog'
 import { COURSES_PAGE_SIZE, useCourses } from './useCourses'
 
-const GRID = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3'
+const GRID = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
 
 export function CoursesPage() {
   useDocumentTitle('Courses')
@@ -21,6 +22,8 @@ export function CoursesPage() {
   const page = pageFromSearch(searchParams.get('page'))
   const [creating, setCreating] = useState(false)
   const { data, isPending, isError, refetch, isFetching } = useCourses(page)
+  // Progress for every course, shared with the sidebar and dashboard (already cached there).
+  const progress = useProgress()
 
   function goToPage(next: number) {
     setSearchParams(next === 0 ? {} : { page: String(next + 1) })
@@ -51,6 +54,7 @@ export function CoursesPage() {
 
       {data && data.totalElements === 0 && (
         <EmptyState
+          icon={BookOpen}
           title="No courses yet"
           description="Create your first course, then add the topics you want to revise."
           action={createButton}
@@ -71,7 +75,10 @@ export function CoursesPage() {
           <ul className={GRID}>
             {data.content.map((course) => (
               <li key={course.id}>
-                <CourseCard course={course} />
+                <CourseCard
+                  course={course}
+                  progress={progress.data?.find((entry) => entry.courseId === course.id)}
+                />
               </li>
             ))}
           </ul>

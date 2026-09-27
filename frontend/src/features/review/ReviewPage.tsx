@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ContentLoading } from '@/components/ContentLoading'
@@ -67,10 +68,14 @@ export function ReviewPage() {
     else setFinished(true)
   }
 
+  // A deliberately narrow, centered column: reviewing is reading, and long lines are hard to recall from.
   return (
-    <>
+    <div className="mx-auto max-w-3xl">
       <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2">
-        <Link to={ROUTES.dashboard}>Exit review</Link>
+        <Link to={ROUTES.dashboard}>
+          <X aria-hidden />
+          Exit review
+        </Link>
       </Button>
       <ReviewCard
         key={items[index].subtopicId}
@@ -80,6 +85,6 @@ export function ReviewPage() {
         onGraded={() => advance(true)}
         onSkip={() => advance(false)}
       />
-    </>
+    </div>
   )
 }

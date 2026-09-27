@@ -25,3 +25,15 @@ export function todayLocalIso(now: Date = new Date()): string {
 export function formatTimestampDate(isoInstant: string): string {
   return new Date(isoInstant).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
+
+/** An ISO date ("YYYY-MM-DD") moved by `days`, computed on the calendar (no timezone involved). */
+export function addDaysIso(isoDate: string, days: number): string {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  return todayLocalIso(new Date(year, month - 1, day + days))
+}
+
+/** A short weekday name for an ISO date, e.g. "Mon", read as a local calendar date. */
+export function weekdayShort(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: 'short' })
+}

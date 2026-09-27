@@ -9,6 +9,8 @@ import {
   type DueItem,
   type PageResponse,
 } from '@/api'
+import { AuthContext } from '@/features/auth/AuthContext'
+import { ann, authValue } from '@/test/auth'
 import { LocationProbe } from '@/test/LocationProbe'
 import { renderWithProviders } from '@/test/render'
 import { DashboardPage } from './DashboardPage'
@@ -62,10 +64,12 @@ afterEach(() => {
 
 function renderPage() {
   return renderWithProviders(
-    <Routes>
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="*" element={<LocationProbe />} />
-    </Routes>,
+    <AuthContext.Provider value={authValue({ status: 'authenticated', user: ann })}>
+      <Routes>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="*" element={<LocationProbe />} />
+      </Routes>
+    </AuthContext.Provider>,
     { route: '/dashboard' },
   )
 }
@@ -134,8 +138,66 @@ describe('start review', () => {
     renderPage()
 
     await screen.findByText('Subtopic 1')
-    expect(api.due).toHaveBeenCalledTimes(1)
-    expect(api.due).toHaveBeenCalledWith({ range: 'today', page: 0, size: 20 })
+    // The forecast asks for the week separately; the Today page is requested exactly once.
+    const todayCalls = api.due.mock.calls.filter(([params]) => params?.range === 'today')
+    expect(todayCalls).toEqual([[{ range: 'today', page: 0, size: 20 }]])
+  })
+})
+
+describe('greeting', () => {
+  it("greets the user by first name and says how many reviews are waiting", async () => {
+    renderPage()
+
+    // 12:00 on the pinned clock; summary has 4 due today + 2 overdue.
+    expect(await screen.findByText('Good afternoon, Ann. 6 reviews to do today.')).toBeInTheDocument()
+  })
+
+  it("says so when there's nothing to do", async () => {
+    api.summary.mockResolvedValue({ dueToday: 0, overdue: 0, totalLearned: 3 })
+    renderPage()
+
+    expect(await screen.findByText("Good afternoon, Ann. You're all caught up.")).toBeInTheDocument()
+  })
+})
+
+describe('review forecast', () => {
+  it('asks for the whole week in one request and counts each day, overdue on today', async () => {
+    api.due.mockImplementation(async (params) =>
+      params?.range === 'week'
+        ? pageOf([
+            item(1, { nextReviewDate: '2026-09-20', daysOverdue: 6 }),
+            item(2, { nextReviewDate: '2026-09-26' }),
+            item(3, { nextReviewDate: '2026-09-28' }),
+          ])
+        : pageOf([]),
+    )
+    renderPage()
+
+    const days = await screen.findByRole('list', { name: 'Reviews per day' })
+    expect(api.due).toHaveBeenCalledWith({ range: 'week', page: 0, size: 100 })
+    expect(within(days).getAllByRole('listitem')).toHaveLength(7)
+    expect(within(days).getByLabelText('Today: 2 reviews, 1 overdue')).toBeInTheDocument()
+    expect(within(days).getByLabelText(/Sep 28, 2026: 1 review$/)).toBeInTheDocument()
+    expect(screen.getByText('3 reviews in the next 7 days')).toBeInTheDocument()
+  })
+
+  it("says so when the week is empty", async () => {
+    api.due.mockResolvedValue(pageOf([]))
+    renderPage()
+
+    expect(await screen.findByText('Nothing scheduled in the next 7 days.')).toBeInTheDocument()
+  })
+
+  it('shows a day\'s figure on hover', async () => {
+    api.due.mockImplementation(async (params) =>
+      params?.range === 'week' ? pageOf([item(3, { nextReviewDate: '2026-09-28' })]) : pageOf([]),
+    )
+    const { user } = renderPage()
+    const day = await screen.findByLabelText(/Sep 28, 2026: 1 review$/)
+
+    await user.hover(day)
+
+    expect(within(day).getByText('1 review')).toBeInTheDocument()
   })
 })
 

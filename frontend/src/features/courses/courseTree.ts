@@ -20,6 +20,29 @@ export function courseProgress(tree: CourseTree): Progress {
 }
 
 /**
+ * Where a subtopic stands in its review cycle — shown as a colored marker on each row
+ * (UI_DESIGN.md §2): not started, learned and waiting for its next review, due today, or overdue.
+ * `today` is an ISO date (YYYY-MM-DD), compared as a string like everywhere else on this page.
+ */
+export type SubtopicState = 'new' | 'scheduled' | 'due' | 'overdue'
+
+export function subtopicState(subtopic: SubtopicTreeNode, today: string): SubtopicState {
+  if (!subtopic.learned || subtopic.nextReviewDate === null) return 'new'
+  if (subtopic.nextReviewDate < today) return 'overdue'
+  if (subtopic.nextReviewDate === today) return 'due'
+  return 'scheduled'
+}
+
+/** How many of a course's subtopics are in each state. */
+export function stateCounts(tree: CourseTree, today: string): Record<SubtopicState, number> {
+  const counts: Record<SubtopicState, number> = { new: 0, scheduled: 0, due: 0, overdue: 0 }
+  for (const topic of tree.topics) {
+    for (const subtopic of topic.subtopics) counts[subtopicState(subtopic, today)]++
+  }
+  return counts
+}
+
+/**
  * Where a new topic goes: after every existing one. Uses the highest index rather than the count,
  * because deleting a topic leaves a gap and a count would then collide with a surviving index.
  */

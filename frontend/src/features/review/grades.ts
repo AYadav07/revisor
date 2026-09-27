@@ -16,3 +16,11 @@ export const GRADES: readonly Grade[] = [
   { quality: 4, label: 'Good', hint: 'Correct after a moment of thought' },
   { quality: 5, label: 'Perfect', hint: 'Instant, effortless recall' },
 ]
+
+/**
+ * Which side of SM-2's line a grade falls on (ARCHITECTURE.md §3): below 3 resets the schedule —
+ * 0-1 a clear miss, 2 a near miss — and 3 or more moves it forward. Drives the grade buttons' color.
+ */
+export function gradeTone(quality: Quality): 'fail' | 'hard' | 'pass' {
+  return quality <= 1 ? 'fail' : quality === 2 ? 'hard' : 'pass'
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CourseTree, SubtopicTreeNode, TopicTreeNode } from '@/api'
-import { courseProgress, nextTopicOrderIndex, topicProgress } from './courseTree'
+import { courseProgress, nextTopicOrderIndex, stateCounts, subtopicState, topicProgress } from './courseTree'
 
 const sub = (id: number, learned: boolean): SubtopicTreeNode => ({
   id,
@@ -42,5 +42,43 @@ describe('nextTopicOrderIndex', () => {
   it('goes after the highest index, not the count, so a gap left by a delete cannot cause a clash', () => {
     expect(nextTopicOrderIndex([topic(1, 0), topic(2, 1), topic(3, 2)])).toBe(3)
     expect(nextTopicOrderIndex([topic(1, 0), topic(3, 2)])).toBe(3)
+  })
+})
+
+describe('subtopicState', () => {
+  const today = '2026-09-26'
+  const node = (learned: boolean, nextReviewDate: string | null): SubtopicTreeNode => ({
+    id: 1,
+    title: 'S',
+    notes: null,
+    learned,
+    nextReviewDate,
+  })
+
+  it('is new until learned', () => {
+    expect(subtopicState(node(false, null), today)).toBe('new')
+  })
+
+  it('is scheduled while the next review is in the future', () => {
+    expect(subtopicState(node(true, '2026-09-27'), today)).toBe('scheduled')
+  })
+
+  it('is due on the day of its review, and overdue after it', () => {
+    expect(subtopicState(node(true, '2026-09-26'), today)).toBe('due')
+    expect(subtopicState(node(true, '2026-09-25'), today)).toBe('overdue')
+  })
+
+  it('counts a course by state', () => {
+    const tree = {
+      id: 1,
+      title: 'C',
+      description: null,
+      topics: [
+        { id: 1, title: 'T1', orderIndex: 0, subtopics: [node(false, null), node(true, '2026-09-26')] },
+        { id: 2, title: 'T2', orderIndex: 1, subtopics: [node(true, '2026-09-01'), node(true, '2026-10-01'), node(true, '2026-10-02')] },
+      ],
+    } as CourseTree
+
+    expect(stateCounts(tree, today)).toEqual({ new: 1, scheduled: 2, due: 1, overdue: 1 })
   })
 })

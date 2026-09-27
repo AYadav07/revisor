@@ -1,47 +1,52 @@
-import { Suspense } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Menu } from 'lucide-react'
+import { Suspense, useState } from 'react'
+import { Outlet, useLocation } from 'react-router-dom'
 import { ContentLoading } from '@/components/ContentLoading'
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary'
-import { UserMenu } from '@/components/UserMenu'
+import { Sidebar } from '@/components/Sidebar'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/features/auth/useAuth'
-import { visibleNavItems } from '@/nav'
-import { ROUTES } from '@/routes'
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 
 /**
- * Persistent layout for every authenticated page (UI_DESIGN.md §3): a top bar with the logo,
- * the main navigation and the user menu, with the page itself rendered below via <Outlet />.
+ * Persistent layout for every authenticated page (UI_DESIGN.md §3): a fixed sidebar on large
+ * screens, and on small ones a top bar whose menu button slides the same sidebar in. The page
+ * itself renders via <Outlet /> across the remaining width.
  */
 export function AppShell() {
-  const { user } = useAuth()
   const { pathname } = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-10 border-b bg-background">
-        <div className="mx-auto flex h-14 max-w-5xl items-center gap-2 px-4">
-          <Button asChild variant="link" className="px-0 text-lg font-semibold no-underline hover:no-underline">
-            <Link to={ROUTES.dashboard}>Revisor</Link>
-          </Button>
-          <nav aria-label="Main" className="flex flex-1 items-center gap-1">
-            {visibleNavItems(user?.role).map((item) => (
-              // NavLink marks the current page with aria-current="page", which the class below styles.
-              <Button key={item.to} asChild variant="ghost" size="sm" className="aria-[current=page]:bg-accent">
-                <NavLink to={item.to}>{item.label}</NavLink>
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 bg-sidebar lg:block">
+        <Sidebar />
+      </aside>
+
+      <div className="lg:pl-64">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-2 bg-sidebar px-4 text-white lg:hidden">
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Open menu" className="hover:bg-sidebar-accent hover:text-white">
+                <Menu aria-hidden />
               </Button>
-            ))}
-          </nav>
-          <UserMenu />
-        </div>
-      </header>
-      <main className="mx-auto max-w-5xl p-4">
-        {/* Pages load on demand: the shell stays while one loads, and a failed load is contained here. */}
-        <RouteErrorBoundary resetKey={pathname}>
-          <Suspense fallback={<ContentLoading />}>
-            <Outlet />
-          </Suspense>
-        </RouteErrorBoundary>
-      </main>
+            </SheetTrigger>
+            <SheetContent side="left" aria-describedby={undefined} className="border-sidebar-border bg-sidebar text-sidebar-foreground">
+              <SheetTitle className="sr-only">Menu</SheetTitle>
+              <Sidebar onNavigate={() => setMenuOpen(false)} />
+            </SheetContent>
+          </Sheet>
+          <span className="font-semibold">Revisor</span>
+        </header>
+
+        <main className="w-full px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+          {/* Pages load on demand: the shell stays while one loads, and a failed load is contained here. */}
+          <RouteErrorBoundary resetKey={pathname}>
+            <Suspense fallback={<ContentLoading />}>
+              <Outlet />
+            </Suspense>
+          </RouteErrorBoundary>
+        </main>
+      </div>
     </div>
   )
 }

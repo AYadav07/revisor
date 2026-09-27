@@ -9,11 +9,15 @@
  *
  * card/popover/accent/ring/input aren't in UI_DESIGN.md's token list but are required by
  * shadcn/ui's primitives (Dialog, Select, Card, ...) — each is derived from a token the
- * doc *does* define (card = background, popover = background, accent = muted, ring =
- * primary, input = border) rather than introducing a new hue of its own.
+ * doc *does* define (accent = muted, ring = primary, input = border) rather than
+ * introducing a new hue of its own.
+ *
+ * Depth (UI_DESIGN.md §2): `background` is the page canvas, a cool tint in light mode, and
+ * `card` is the surface panels, the sidebar and dialogs sit on — white in light mode, a step
+ * lighter than the canvas in dark mode. The contrast between the two is what groups content.
  */
 :root {
-  --background: 0 0% 100%;
+  --background: 220 27% 96%;
   --foreground: 222 47% 11%;
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
@@ -27,8 +31,8 @@
   --accent-foreground: 222 47% 11%;
   --secondary: 210 40% 96%;
   --secondary-foreground: 222 47% 11%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
+  --border: 220 18% 88%;
+  --input: 220 18% 88%;
   --ring: 221 83% 53%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
@@ -37,14 +41,25 @@
   --warning: 38 92% 50%;
   --warning-foreground: 222 47% 11%;
   --radius: 0.5rem;
+  /* Second brand hue: the violet end of the blue → violet brand gradient on hero headers. */
+  --brand-2: 256 76% 58%;
+  /* Hero headers: the brand gradient, kept deep enough that white text reads on every stop. */
+  --hero-from: 221 83% 48%;
+  --hero-to: 256 68% 52%;
+  /* The sidebar is deep navy in both themes: the app's frame, and where its identity lives. */
+  --sidebar: 224 58% 14%;
+  --sidebar-foreground: 214 32% 91%;
+  --sidebar-muted-foreground: 217 20% 64%;
+  --sidebar-accent: 222 40% 22%;
+  --sidebar-border: 222 38% 22%;
 }
 
 :root[data-theme='dark'] {
-  --background: 222 47% 11%;
+  --background: 224 47% 7%;
   --foreground: 210 40% 98%;
-  --card: 222 47% 11%;
+  --card: 222 44% 11%;
   --card-foreground: 210 40% 98%;
-  --popover: 222 47% 11%;
+  --popover: 222 44% 11%;
   --popover-foreground: 210 40% 98%;
   --primary: 217 91% 60%;
   --primary-foreground: 222 47% 11%;
@@ -54,8 +69,8 @@
   --accent-foreground: 210 40% 98%;
   --secondary: 217 33% 17%;
   --secondary-foreground: 210 40% 98%;
-  --border: 217 33% 20%;
-  --input: 217 33% 20%;
+  --border: 217 30% 19%;
+  --input: 217 30% 21%;
   --ring: 217 91% 60%;
   --destructive: 0 72% 55%;
   --destructive-foreground: 0 0% 100%;
@@ -63,6 +78,14 @@
   --success-foreground: 222 47% 11%;
   --warning: 38 85% 55%;
   --warning-foreground: 222 47% 11%;
+  --brand-2: 256 80% 66%;
+  --hero-from: 221 70% 36%;
+  --hero-to: 256 52% 40%;
+  --sidebar: 225 55% 5%;
+  --sidebar-foreground: 214 32% 91%;
+  --sidebar-muted-foreground: 217 20% 60%;
+  --sidebar-accent: 222 40% 14%;
+  --sidebar-border: 222 38% 14%;
 }
 
 /* Maps the HSL-component variables above into Tailwind v4's utility namespace, so
@@ -91,6 +114,14 @@
   --color-success-foreground: hsl(var(--success-foreground));
   --color-warning: hsl(var(--warning));
   --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-brand-2: hsl(var(--brand-2));
+  --color-hero-from: hsl(var(--hero-from));
+  --color-hero-to: hsl(var(--hero-to));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-muted-foreground: hsl(var(--sidebar-muted-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-border: hsl(var(--sidebar-border));
 
   --radius-sm: calc(var(--radius) - 0.25rem);
   --radius-md: calc(var(--radius) - 0.125rem);

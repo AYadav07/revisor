@@ -1,3 +1,4 @@
+import { AlarmClock, CalendarCheck, CircleCheckBig } from 'lucide-react'
 import { LoadError } from '@/components/LoadError'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatTile } from './StatTile'
@@ -12,9 +13,9 @@ export function StatTiles() {
   if (summary.isPending) {
     return (
       <div role="status" aria-label="Loading summary" className={GRID}>
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
+        <Skeleton className="h-22 rounded-xl" />
+        <Skeleton className="h-22 rounded-xl" />
+        <Skeleton className="h-22 rounded-xl" />
       </div>
     )
   }
@@ -25,9 +26,16 @@ export function StatTiles() {
 
   return (
     <div className={GRID}>
-      <StatTile label="Due today" value={summary.data.dueToday} />
-      <StatTile label="Overdue" value={summary.data.overdue} alert={summary.data.overdue > 0} />
-      <StatTile label="Learned" value={summary.data.totalLearned} />
+      <StatTile label="Due today" value={summary.data.dueToday} icon={CalendarCheck} tone="warning" />
+      <StatTile
+        label="Overdue"
+        value={summary.data.overdue}
+        icon={AlarmClock}
+        // Only alarming when there is something overdue; zero is good news, not a warning.
+        tone={summary.data.overdue > 0 ? 'destructive' : 'neutral'}
+        alert={summary.data.overdue > 0}
+      />
+      <StatTile label="Learned" value={summary.data.totalLearned} icon={CircleCheckBig} tone="success" />
     </div>
   )
 }
