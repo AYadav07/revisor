@@ -45,7 +45,7 @@ export function UserTable({ users, currentUserId, togglingId, onToggle, onDelete
                 <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'}>{user.role === 'ADMIN' ? 'Admin' : 'User'}</Badge>
               </TableCell>
               <TableCell>
-                <UserStatusBadge enabled={user.enabled} />
+                <UserStatusBadge enabled={user.enabled} emailVerified={user.emailVerified} />
               </TableCell>
               <TableCell>{formatTimestampDate(user.createdAt)}</TableCell>
               <TableCell>

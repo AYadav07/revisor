@@ -39,6 +39,10 @@ public class User {
     @Column(nullable = false)
     private String timezone;
 
+    /** Null until the user clicks their verification link (or completes a password reset). */
+    @Column(name = "email_verified_at")
+    private Instant emailVerifiedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -105,5 +109,20 @@ public class User {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getEmailVerifiedAt() {
+        return emailVerifiedAt;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerifiedAt != null;
+    }
+
+    /** Records the first verification only; later calls keep the original timestamp. */
+    public void markEmailVerified(Instant now) {
+        if (emailVerifiedAt == null) {
+            emailVerifiedAt = now;
+        }
     }
 }

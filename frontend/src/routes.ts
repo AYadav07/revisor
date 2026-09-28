@@ -2,6 +2,13 @@
 export const ROUTES = {
   login: '/login',
   signup: '/signup',
+  /** "Check your inbox" after signup or an unverified sign-in, with a resend button. */
+  checkEmail: '/check-email',
+  /** Where the emailed verification link lands (`?token=`). */
+  verifyEmail: '/verify-email',
+  forgotPassword: '/forgot-password',
+  /** Where the emailed reset link lands (`?token=`). */
+  resetPassword: '/reset-password',
   dashboard: '/dashboard',
   courses: '/courses',
   /** The route pattern, for the router. Use {@link courseDetailPath} to build a link. */

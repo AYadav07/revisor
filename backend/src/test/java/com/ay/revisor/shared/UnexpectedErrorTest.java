@@ -37,7 +37,7 @@ class UnexpectedErrorTest extends ControllerTestBase {
         String body = mvc.perform(get("/api/v1/test-only/boom").cookie(ann.cookie()))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.type").value("https://revisor.dev/errors/internal-error"))
+                .andExpect(jsonPath("$.type").value("https://revisor.aydev.in/errors/internal-error"))
                 .andExpect(jsonPath("$.status").value(500))
                 .andExpect(jsonPath("$.instance").value("/api/v1/test-only/boom"))
                 .andReturn().getResponse().getContentAsString();

@@ -151,7 +151,9 @@ like SMS can be added later with new classes only — no rewrite of existing one
 1. **What** to notify — domain intent ("a password reset was requested"). Owned by `auth`,
    expressed as a domain event. `auth` knows nothing about emails, templates or SMTP.
 2. **How it reads** — subject/HTML/text for email, short text for SMS. Owned by a
-   `TemplateRenderer` (Thymeleaf), templates in the repo per `(type, channel)`.
+   `TemplateRenderer`, templates in the repo per `(type, channel)`. Templates use plain
+   `{{name}}` placeholders (HTML-escaped in HTML bodies) — a template engine would be a
+   dependency without a job for two short transactional emails; a missing value fails loudly.
 3. **How it's delivered** — SMTP today, an SMS gateway later. Owned by small
    per-medium transport interfaces.
 
@@ -177,7 +179,8 @@ enum NotificationType { VERIFY_EMAIL, PASSWORD_RESET }
 enum Channel { EMAIL, SMS }
 
 record Recipient(String name, String email, String phone) {}   // phone unused in v1
-record Notification(NotificationType type, Recipient to, Map<String, Object> data) {}
+record Notification(NotificationType type, Long userId, Recipient to, Map<String, String> data) {}
+// userId is the only identifier the module logs; toString() never prints the address or data
 
 interface NotificationChannel {          // one implementation per channel
     Channel channel();
@@ -204,7 +207,7 @@ com.ay.revisor.notification/
 ├── transport/email/    EmailSender, EmailMessage, SmtpEmailSender
 └── transport/sms/      (v2+) SmsSender, SmsMessage, <Provider>SmsSender
 resources/templates/
-├── email/  verify-email.html + .txt, password-reset.html + .txt
+├── email/  verify-email.subject.txt + .txt + .html, password-reset.subject.txt + .txt + .html
 └── sms/    (v2+)
 ```
 
@@ -223,13 +226,19 @@ resources/templates/
 **Provider independence:** there is exactly one `EmailSender` implementation,
 `SmtpEmailSender` (Spring `JavaMailSender`). Every transactional provider speaks SMTP, so
 switching provider = changing `MAIL_HOST/PORT/USERNAME/PASSWORD` + DNS records. No
-provider SDK, no provider-hosted templates, no provider click/open tracking. An HTTP-API
-sender (e.g. for delivery webhooks) can be added later as a second implementation selected
-by `app.mail.transport`, without touching callers.
+provider SDK, no provider-hosted templates, no provider click/open tracking. The transport is
+chosen by `app.mail.transport`: `smtp` (default) or `log` — a `LoggingEmailSender` that notes
+the subject instead of sending, used by the in-memory `local` profile, which has no SMTP
+server. An HTTP-API sender (e.g. for delivery webhooks) could be added later as a third value,
+without touching callers. Settings: `spring.mail.*` for the connection, `app.mail.from` and
+`app.mail.frontend-url` (the base of every link — always the frontend, never the API).
 
 **Failure handling (v1):** `@Async` executor with a small bounded pool (core 1, max 2 —
-the e2-micro has 1 GB RAM); on SMTP failure, retry up to 3 times with backoff (Spring
-Retry), then log an error (user id + type, no body). No persistent outbox in v1 — if the
+the e2-micro has 1 GB RAM; the request id is carried onto it for log correlation); on
+failure, `NotificationServiceImpl` retries each channel up to `app.notifications.max-attempts`
+(3) times with doubling backoff from `app.notifications.retry-backoff` (2s) — a plain loop,
+not a retry library — then logs an error (user id + type + exception class, never the
+provider's message, which can echo the address). No persistent outbox in v1 — if the
 process dies mid-send, the user uses "resend verification" / "forgot password" again.
 Revisit with an outbox table only if lost emails become a real problem.
 
@@ -292,8 +301,9 @@ page-by-page layout, forms) lives in **UI_DESIGN.md** — read both before build
 ## 10. Tech stack
 - Backend: Spring Boot 4 (Java 25), Spring Data JPA, Spring Security, PostgreSQL, Flyway
 - Auth: Nimbus JOSE+JWT (RS256), BCrypt (via `spring-security-crypto`), Bucket4j (rate limiting)
-- Email: `spring-boot-starter-mail` (JavaMailSender over SMTP), Thymeleaf (templates),
-  Spring Retry; SMTP2GO in production, Mailpit locally (see DEPLOYMENT.md)
+- Email: `spring-boot-starter-mail` (JavaMailSender over SMTP) — the only new runtime
+  dependency; templates and retry are plain code. SMTP2GO in production, Mailpit locally
+  (see DEPLOYMENT.md)
 - Mapping/validation: MapStruct, Bean Validation — plain Java, no Lombok
 - API docs: springdoc-openapi (Swagger UI, gated/disabled in prod — see SECURITY.md)
 - Observability: Spring Boot's structured logging (JSON in prod, see DEPLOYMENT.md),

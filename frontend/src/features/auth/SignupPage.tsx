@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 import { AuthLayout } from '@/components/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -10,10 +11,12 @@ import { detectTimezone } from '@/lib/timezone'
 import { ROUTES } from '@/routes'
 import { interpretSignupError } from './authErrors'
 import { signupSchema, type SignupValues } from './authSchemas'
+import type { CheckEmailState } from './CheckEmailPage'
 import { useAuth } from './useAuth'
 
 export function SignupPage() {
   const { signup } = useAuth()
+  const navigate = useNavigate()
   const [formError, setFormError] = useState<string | null>(null)
   const form = useForm<SignupValues>({
     resolver: zodResolver(signupSchema),
@@ -25,7 +28,9 @@ export function SignupPage() {
     try {
       // The timezone is not a form field: it's read from the browser and sent silently (UI_DESIGN.md §6).
       await signup({ ...values, timezone: detectTimezone() })
-      // On success <PublicOnly> sees the new session and redirects.
+      // No session yet: the account can't sign in until the emailed link is clicked.
+      const state: CheckEmailState = { email: values.email, reason: 'signed-up' }
+      navigate(ROUTES.checkEmail, { state })
     } catch (error) {
       const { fields, form: formMessage } = interpretSignupError(error)
       for (const [name, message] of Object.entries(fields)) {

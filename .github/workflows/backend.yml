@@ -4,7 +4,7 @@
 #
 # Repository configuration (Settings → Secrets and variables → Actions; see deploy/README.md):
 #   secrets  DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS
-#   vars     API_DOMAIN (e.g. api.revisor.dev), DEPLOY_DIR (default /opt/revisor)
+#   vars     API_DOMAIN (api.revisor.aydev.in), DEPLOY_DIR (default /opt/revisor)
 name: Backend
 
 on:

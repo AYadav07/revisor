@@ -97,6 +97,10 @@ class AuthLoggingTest {
         mvc.perform(post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(
                 "{\"name\":\"Ann\",\"email\":\"" + EMAIL + "\",\"password\":\"" + PASSWORD + "\",\"timezone\":\"UTC\"}"))
                 .andExpect(status().isCreated());
+        // As if the emailed link had been clicked: login requires a verified email.
+        User user = userRepository.findByEmail(EMAIL).orElseThrow();
+        user.markEmailVerified(java.time.Instant.now());
+        userRepository.save(user);
     }
 
     private MockHttpServletResponse login(String password) throws Exception {

@@ -13,7 +13,7 @@ function json(status: number, body: unknown, headers: Record<string, string> = {
 function problem(status: number, extra: Record<string, unknown> = {}): Response {
   return json(
     status,
-    { type: 'https://revisor.dev/errors/x', title: 'Title', status, detail: 'Detail text', instance: '/x', ...extra },
+    { type: 'https://revisor.aydev.in/errors/x', title: 'Title', status, detail: 'Detail text', instance: '/x', ...extra },
     { 'Content-Type': 'application/problem+json', 'X-Request-Id': 'req-123' },
   )
 }

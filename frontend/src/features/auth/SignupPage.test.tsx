@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError, type ProblemDetail } from '@/api'
 import { authValue } from '@/test/auth'
@@ -9,11 +9,24 @@ import { SignupPage } from './SignupPage'
 
 vi.mock('@/lib/timezone', () => ({ detectTimezone: () => 'Asia/Kolkata' }))
 
+
+/** Where the page navigated to, and with what router state. */
+function NavigationProbe() {
+  const location = useLocation()
+  return (
+    <>
+      <output data-testid="path">{location.pathname}</output>
+      <output data-testid="state">{JSON.stringify(location.state ?? null)}</output>
+    </>
+  )
+}
+
 function renderSignup(auth: AuthContextValue = authValue()) {
   render(
     <AuthContext.Provider value={auth}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/signup']}>
         <SignupPage />
+        <NavigationProbe />
       </MemoryRouter>
     </AuthContext.Provider>,
   )
@@ -77,6 +90,19 @@ describe('SignupPage', () => {
       email: 'ann@example.com',
       password: 'correct-horse',
       timezone: 'Asia/Kolkata',
+    })
+  })
+
+  it('sends the new user to /check-email with their address, since they cannot sign in until verified', async () => {
+    const { user } = renderSignup()
+
+    await fill(user, 'Ann', ' ann@example.com ', 'correct-horse')
+    await submit(user)
+
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent('/check-email'))
+    expect(JSON.parse(screen.getByTestId('state').textContent ?? 'null')).toEqual({
+      email: 'ann@example.com',
+      reason: 'signed-up',
     })
   })
 

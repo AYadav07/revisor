@@ -117,10 +117,15 @@ scale.
 | Route | Purpose | Key components |
 |---|---|---|
 | `/login`, `/signup` | Auth | `AuthForm`, `AuthLayout` |
-| `/check-email` | "Check your inbox" after signup or unverified login, with resend | `CheckEmailCard`, `ResendButton` |
-| `/verify-email?token=` | Redeem verification link | `TokenResultCard` |
-| `/forgot-password` | Request a reset link | `ForgotPasswordForm` |
-| `/reset-password?token=` | Set a new password | `ResetPasswordForm`, `TokenResultCard` |
+| `/check-email` | "Check your inbox" after signup or unverified login, with resend | `CheckEmailPage` (resend button with cooldown; an email form when opened without an address) |
+| `/verify-email?token=` | Redeem verification link | `VerifyEmailPage`, `EmailLinkResult` |
+| `/forgot-password` | Request a reset link | `ForgotPasswordPage` |
+| `/reset-password?token=` | Set a new password | `ResetPasswordPage`, `EmailLinkResult` |
+
+The four email pages are public routes. `/forgot-password` sits with `/login` and `/signup` under
+`PublicOnly`; `/check-email`, `/verify-email` and `/reset-password` work whether or not someone is
+signed in on that browser, since an emailed link is about the account it was sent to. Their token
+handling (read once, strip from the URL, POST once) lives in `useLinkToken` (`features/auth/useEmailLinks.ts`).
 | `/courses` | Course list | `CourseCard`, `CreateCourseDialog`, `EmptyState` |
 | `/courses/:id` | Topic/subtopic tree for one course | `TopicAccordion`, `SubtopicRow`, `AddTopicForm` |
 | `/subtopics/:id/review` | Review-grading flow | `ReviewPrompt`, `QualityGradeButtons`, `RevealButton` |
@@ -175,7 +180,7 @@ subtopics nested — see API.md) and renders it directly into `TopicAccordion` /
   message — never "no such user" (mirrors the API's 202-always behavior).
 - **`/reset-password`**: same token read-and-strip pattern; form with new password +
   confirm. On `204`, toast "Password updated — sign in" and go to `/login`. On
-  `invalid-token`, show `TokenResultCard` with a link back to `/forgot-password`.
+  `invalid-token`, show `EmailLinkResult` with a link back to `/forgot-password`.
 - **Admin `UserTable`**: an "Unverified" `warning` badge next to users whose
   `emailVerified` is false.
 

@@ -47,10 +47,10 @@ POST   /api/v1/auth/signup   { name, email, password, timezone } -> 201, returns
           commit). No cookies are set — the user must verify before logging in.
        -> 409 if the email is already registered
 POST   /api/v1/auth/login    { email, password } -> sets access + refresh cookies, returns { user: { id, name, email, role } }
-       -> 401 invalid credentials
-       -> 403 type=.../errors/email-not-verified if the password is correct but the email
-          is unverified (only revealed after a correct password — see SECURITY.md)
-       -> 403 if the account is disabled
+       -> 401 invalid credentials or a disabled account (indistinguishable by design)
+       -> 403 type=.../errors/email-not-verified if the password is correct, the account is
+          enabled, but the email is unverified (only revealed after a correct password — see
+          SECURITY.md)
 POST   /api/v1/auth/refresh  -> rotates refresh token, sets new access + refresh cookies, returns { user: { id, name, email, role } }
 POST   /api/v1/auth/logout   -> revokes refresh token server-side, clears cookies
 ```

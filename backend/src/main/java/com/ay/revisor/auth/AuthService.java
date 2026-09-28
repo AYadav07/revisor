@@ -9,14 +9,20 @@ import java.time.Instant;
  */
 public interface AuthService {
 
-    /** @throws com.ay.revisor.shared.ConflictException if the email is already registered */
-    UserResponse signup(SignupRequest request);
+    /**
+     * Creates an unverified account and emails a verification link (sent after commit).
+     *
+     * @throws com.ay.revisor.shared.ConflictException if the email is already registered
+     */
+    UserResponse signup(SignupRequest request, Instant now);
 
     /**
      * Starts a new token family.
      *
      * @throws com.ay.revisor.shared.UnauthorizedException on unknown email, wrong password or
      *         disabled account — indistinguishable to the caller by design
+     * @throws com.ay.revisor.shared.EmailNotVerifiedException if the credentials are right but the email
+     *         isn't verified yet — only ever revealed to someone who knows the password
      */
     AuthResult login(LoginRequest request, Instant now);
 

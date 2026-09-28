@@ -8,8 +8,9 @@ no-Redis setup, and why that's still a "designed for scale" decision, not a shor
 the gitignored `backend/.env`). Mailpit catches every outgoing email — nothing is really sent — with
 its SMTP server on `localhost:1025` (the `dev` profile's `spring.mail` target, no auth, no TLS) and a
 web inbox at `http://localhost:8025` for clicking verification/reset links. It is local-only, never
-in `deploy/compose.yaml`. `./gradlew test` doesn't need it: email tests start an in-process GreenMail
-server. The rest of the local setup: the backend itself runs with `./gradlew bootRun` on the `dev` profile
+in `deploy/compose.yaml`. `./gradlew test` doesn't need it: the in-memory `local` profile sets
+`app.mail.transport=log` (emails are noted in the log, not sent), the flow tests capture rendered emails
+with a recording sender, and the SMTP transport is tested against an in-process GreenMail server. The rest of the local setup: the backend itself runs with `./gradlew bootRun` on the `dev` profile
 and the frontend with `npm run dev` — see the root README.md. The frontend is never part of a
 Compose stack, matching how it's deployed in production (see below).
 
@@ -234,7 +235,4 @@ env vars (`VITE_API_URL`) are not secret and are set directly in Cloudflare Page
 config.
 
 ## Open items
-- No open decisions — the domain is settled (`aydev.in`, see §Frontend deployment).
-- Follow-up: the repo's `deploy/.env.example`, `deploy/Caddyfile` comment and `deploy/README.md` still show
-  `revisor.dev` example values, and the Problem Details `type` base in code is still
-  `https://revisor.dev/errors/` — update them to `revisor.aydev.in` alongside the email milestone.
+- None currently — the domain is settled (`aydev.in`, see §Frontend deployment).

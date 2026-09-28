@@ -7,7 +7,10 @@ export interface AuthContextValue {
   user: AuthUser | null
   /** Rejects with an ApiError on failure (401 bad credentials, 429 rate limited, ...). */
   login: (credentials: LoginRequest) => Promise<AuthUser>
-  /** Creates the account, then signs in with the same credentials (signup itself sets no cookies). */
+  /**
+   * Creates the account and has a verification link emailed. Does not sign in: an unverified
+   * account can't, so the caller sends the user to /check-email.
+   */
   signup: (details: SignupRequest) => Promise<AuthUser>
   /**
    * Always clears the local session, even if the server call fails — but then rejects, since the

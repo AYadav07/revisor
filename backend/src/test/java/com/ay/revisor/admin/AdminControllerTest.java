@@ -46,7 +46,7 @@ class AdminControllerTest extends ControllerTestBase {
 
         mvc.perform(get("/api/v1/admin/users").cookie(ann.cookie()))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.type").value("https://revisor.dev/errors/forbidden"))
+                .andExpect(jsonPath("$.type").value("https://revisor.aydev.in/errors/forbidden"))
                 .andExpect(jsonPath("$.status").value(403));
         mvc.perform(patch(url).cookie(ann.cookie()).contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false}"))
                 .andExpect(status().isForbidden());
@@ -159,7 +159,7 @@ class AdminControllerTest extends ControllerTestBase {
         mvc.perform(patch("/api/v1/admin/users/" + admin.id()).cookie(admin.cookie())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false}"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.type").value("https://revisor.dev/errors/conflict"));
+                .andExpect(jsonPath("$.type").value("https://revisor.aydev.in/errors/conflict"));
 
         assertThat(userRepository.findById(admin.id())).get().extracting(u -> u.isEnabled()).isEqualTo(true);
         assertThat(adminActionRepository.findAll()).isEmpty();

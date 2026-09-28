@@ -1,5 +1,5 @@
 # Reverse proxy for the API subdomain (DEPLOYMENT.md). Caddy obtains and renews the TLS certificate
-# itself. API_DOMAIN comes from .env — e.g. api.revisor.dev once the domain is chosen.
+# itself. API_DOMAIN comes from .env — api.revisor.aydev.in.
 {$API_DOMAIN} {
 	encode zstd gzip
 

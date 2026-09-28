@@ -32,7 +32,7 @@ class CourseControllerTest extends ControllerTestBase {
         mvc.perform(post("/api/v1/courses").cookie(ann.cookie()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"  \"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("https://revisor.dev/errors/validation-failed"))
+                .andExpect(jsonPath("$.type").value("https://revisor.aydev.in/errors/validation-failed"))
                 .andExpect(jsonPath("$.errors[0].field").value("title"));
     }
 
@@ -73,7 +73,7 @@ class CourseControllerTest extends ControllerTestBase {
 
         mvc.perform(get("/api/v1/courses").cookie(ann.cookie()).param("size", "101"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("https://revisor.dev/errors/validation-failed"))
+                .andExpect(jsonPath("$.type").value("https://revisor.aydev.in/errors/validation-failed"))
                 .andExpect(jsonPath("$.errors[0].field").value("size"));
         mvc.perform(get("/api/v1/courses").cookie(ann.cookie()).param("size", "0")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/v1/courses").cookie(ann.cookie()).param("page", "-1"))
@@ -115,7 +115,7 @@ class CourseControllerTest extends ControllerTestBase {
         String url = "/api/v1/courses/" + annsCourse;
 
         mvc.perform(get(url).cookie(bob.cookie())).andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.type").value("https://revisor.dev/errors/not-found"));
+                .andExpect(jsonPath("$.type").value("https://revisor.aydev.in/errors/not-found"));
         mvc.perform(put(url).cookie(bob.cookie()).contentType(MediaType.APPLICATION_JSON).content("{\"title\":\"Hijacked\"}"))
                 .andExpect(status().isNotFound());
         mvc.perform(delete(url).cookie(bob.cookie())).andExpect(status().isNotFound());

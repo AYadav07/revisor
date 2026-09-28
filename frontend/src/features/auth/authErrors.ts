@@ -2,6 +2,32 @@ import { ApiError } from '@/api'
 
 const GENERIC_MESSAGE = 'Something went wrong. Please try again.'
 
+/** Whether an API error is the given Problem Details type, e.g. `email-not-verified` (API.md). */
+function hasProblemType(error: unknown, slug: string): boolean {
+  return error instanceof ApiError && (error.problem?.type ?? '').endsWith(`/errors/${slug}`)
+}
+
+/** Right password, but the email isn't verified yet (403). The user should be sent to /check-email. */
+export function isEmailNotVerified(error: unknown): boolean {
+  return hasProblemType(error, 'email-not-verified')
+}
+
+/** An emailed link that is unknown, expired or already used (400). */
+export function isInvalidToken(error: unknown): boolean {
+  return hasProblemType(error, 'invalid-token')
+}
+
+/**
+ * What to say when a request about an emailed link fails for a reason other than a bad link:
+ * rate limiting and connectivity messages already explain themselves.
+ */
+export function emailRequestErrorMessage(error: unknown): string {
+  if (error instanceof ApiError && (error.status === 0 || error.status === 429)) {
+    return error.message
+  }
+  return GENERIC_MESSAGE
+}
+
 /** What to tell a user whose sign-in attempt failed. */
 export function loginErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
