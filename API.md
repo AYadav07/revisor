@@ -16,7 +16,7 @@ details, DEPLOYMENT.md for the cross-origin/custom-domain implications of cookie
 - Errors: RFC 7807 Problem Details —
   ```json
   {
-    "type": "https://revisor.dev/errors/validation-failed",
+    "type": "https://revisor.aydev.in/errors/validation-failed",
     "title": "Validation failed",
     "status": 400,
     "detail": "One or more fields are invalid",
@@ -36,21 +36,57 @@ details, DEPLOYMENT.md for the cross-origin/custom-domain implications of cookie
 - Every response carries an `X-Request-Id` header (a well-formed one sent by the caller is echoed;
   otherwise the server generates one) for correlating with server logs.
 - Rate limits return `429` Problem Details with a `Retry-After` header (seconds): `/auth/login` 5
-  attempts per email per 15 minutes, `/auth/signup` 10 per IP per hour (see SECURITY.md).
+  attempts per email per 15 minutes, `/auth/signup` 10 per IP per hour; the email-sending and
+  token endpoints have their own limits (see SECURITY.md).
 - `GET /actuator/health` is public and returns only `{ "status": "UP" }`-style output.
 
 ## Auth
 ```
 POST   /api/v1/auth/signup   { name, email, password, timezone } -> 201, returns { id, name, email, role }
+       -> the account is created unverified and a verification email is sent (async, after
+          commit). No cookies are set — the user must verify before logging in.
+       -> 409 if the email is already registered
 POST   /api/v1/auth/login    { email, password } -> sets access + refresh cookies, returns { user: { id, name, email, role } }
+       -> 401 invalid credentials
+       -> 403 type=.../errors/email-not-verified if the password is correct but the email
+          is unverified (only revealed after a correct password — see SECURITY.md)
+       -> 403 if the account is disabled
 POST   /api/v1/auth/refresh  -> rotates refresh token, sets new access + refresh cookies, returns { user: { id, name, email, role } }
 POST   /api/v1/auth/logout   -> revokes refresh token server-side, clears cookies
 ```
 `timezone` is an IANA string captured client-side via
 `Intl.DateTimeFormat().resolvedOptions().timeZone` at signup — see ARCHITECTURE.md §6.
 
-Password reset / "forgot password" is out of scope for v1 (see PRD.md §4) — no endpoint
-exists for it yet.
+### Email verification & password reset
+All four endpoints are public (no auth cookie). Tokens are the opaque value from the
+emailed link (`https://revisor.aydev.in/verify-email?token=…` /
+`https://revisor.aydev.in/reset-password?token=…`); the frontend page reads it from the
+URL and POSTs it — links never point at the API directly (see SECURITY.md).
+```
+POST   /api/v1/auth/verify-email          { token }
+       -> 200, marks the user verified (email_verified_at = now), consumes the token
+       -> 400 type=.../errors/invalid-token if the token is unknown, expired or used
+       -> idempotent for an already-verified user: 200
+
+POST   /api/v1/auth/resend-verification   { email }
+       -> 202 always — same response whether the email exists, is already verified, or
+          is unknown (no account enumeration). Sends a new link only for an existing,
+          unverified, enabled account; invalidates any previous unused verify token.
+       -> 429 when rate-limited
+
+POST   /api/v1/auth/forgot-password       { email }
+       -> 202 always (no account enumeration). Sends a reset link only for an existing,
+          enabled account; invalidates any previous unused reset token.
+       -> 429 when rate-limited
+
+POST   /api/v1/auth/reset-password        { token, newPassword }
+       -> 204, sets the new password (BCrypt), consumes the token, revokes ALL of the
+          user's refresh tokens (logged out everywhere), and marks the email verified if
+          it wasn't (the user just proved inbox ownership). Does not log the user in —
+          they log in with the new password.
+       -> 400 type=.../errors/invalid-token if the token is unknown, expired or used
+       -> 400 validation-failed if newPassword violates the policy (min 8 chars)
+```
 
 ## Courses / Topics / Subtopics
 ```
@@ -134,17 +170,18 @@ GET    /api/v1/dashboard/summary                -> { dueToday, overdue, totalLea
 ## Admin (requires ADMIN role — 403 if authenticated as USER)
 ```
 GET    /api/v1/admin/users?q=                    -> paginated; q matches name or email,
-                                                     case-insensitively; omit q to list everyone
+                                                     case-insensitively; omit q to list everyone;
+                                                     each row includes emailVerified
 PATCH  /api/v1/admin/users/{id}    { enabled: false }
                                     -> also revokes all of the user's outstanding refresh
-                                       tokens (whole token family — see SECURITY.md),
+                                       tokens (every family — see SECURITY.md),
                                        forcing logout everywhere immediately
 DELETE /api/v1/admin/users/{id}                  -> 409 Conflict unless the user is
                                                      already disabled (enabled: false);
                                                      once disabled, hard-cascades: deletes
                                                      the user and all of their courses,
-                                                     topics, subtopics, review history and
-                                                     refresh tokens
+                                                     topics, subtopics, review history,
+                                                     refresh tokens and email tokens
 GET    /api/v1/admin/users/{id}/courses          -> paginated read-only view of that user's
                                                      courses, each with { learnedCount, totalCount }
 ```
@@ -154,5 +191,5 @@ already-disabled case above, so no separate error shape to handle. Every admin a
 (see ARCHITECTURE.md §2).
 
 ## Open items
-- None currently — see PRD.md §7 for v2+ scope (password reset, topic reordering, etc.)
-  intentionally deferred rather than undecided.
+- None currently — see PRD.md §7 for v2+ scope (SMS, email change, topic reordering,
+  etc.) intentionally deferred rather than undecided.
