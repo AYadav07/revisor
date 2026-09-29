@@ -17,7 +17,7 @@ export function apiOrigin(env: BuildEnv): string {
   const onCloudflare = env.CF_PAGES === '1'
   const raw = env.VITE_API_URL?.trim()
   if (!raw) {
-    if (onCloudflare) throw new Error('VITE_API_URL must be set for Cloudflare Pages builds, e.g. https://api.<domain>')
+    if (onCloudflare) throw new Error('VITE_API_URL must be set for Cloudflare Pages builds, e.g. https://api.revisor.aydev.in')
     return new URL(LOCAL_API_URL).origin
   }
   let url: URL
@@ -58,6 +58,14 @@ export function pagesHeaders(api: string): string {
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+
+# Emailed links carry a token in the URL: never send any referrer from these pages (SECURITY.md).
+# Pages joins a header set by two matching rules with a comma, and browsers apply the last policy in
+# the list, so no-referrer wins over the site-wide value above.
+/verify-email
+  Referrer-Policy: no-referrer
+/reset-password
+  Referrer-Policy: no-referrer
 
 # Vite content-hashes everything under /assets, so a file there never changes.
 /assets/*

@@ -1,7 +1,7 @@
 # Revisor — UI Design
 
 Living document. Full frontend design detail — theme, components, pages, forms. See
-ARCHITECTURE.md §8 for the frontend's structural/technical decisions (state management,
+ARCHITECTURE.md §9 for the frontend's structural/technical decisions (state management,
 data fetching, routing, component folder structure); this doc is the visual/UX layer on
 top of that.
 
@@ -79,9 +79,9 @@ Theme toggle: `data-theme` attribute on `<html>`, persisted in `localStorage`, d
 to the OS preference (`prefers-color-scheme`) on first visit.
 
 **Color semantics — state communicates via color across the app:**
-- `success` (green) → subtopic learned / on schedule
-- `warning` (amber) → due soon / weak ease factor
-- `destructive` (red) → overdue / delete actions
+- `success` (green) → subtopic learned / on schedule / email verified
+- `warning` (amber) → due soon / weak ease factor / email unverified (admin table)
+- `destructive` (red) → overdue / delete actions / invalid or expired link
 - `primary` → main actions (Review, Save, Sign in)
 
 Every subtopic row starts with a small **state marker** — hollow (not started), `success`
@@ -107,14 +107,25 @@ scale.
     highlighted — and the user menu (theme toggle + sign out) pinned at the bottom.
   - **Small screens:** a top bar with a menu button that slides the same sidebar in as a
     `Sheet`; following a link closes it.
-- **`AuthLayout`** — minimal centered-card layout for `/login` and `/signup`, no nav, brand
-  mark above the card.
+- **`AuthLayout`** — minimal centered-card layout for all public auth pages (`/login`,
+  `/signup`, `/check-email`, `/verify-email`, `/forgot-password`, `/reset-password`), no
+  nav, brand mark above the card. The new email pages reuse the same split-screen brand
+  panel as sign-in/sign-up on wide displays, so every public page looks like one family.
 
 ## 4. Pages
 
 | Route | Purpose | Key components |
 |---|---|---|
 | `/login`, `/signup` | Auth | `AuthForm`, `AuthLayout` |
+| `/check-email` | "Check your inbox" after signup or unverified login, with resend | `CheckEmailPage` (resend button with cooldown; an email form when opened without an address) |
+| `/verify-email?token=` | Redeem verification link | `VerifyEmailPage`, `EmailLinkResult` |
+| `/forgot-password` | Request a reset link | `ForgotPasswordPage` |
+| `/reset-password?token=` | Set a new password | `ResetPasswordPage`, `EmailLinkResult` |
+
+The four email pages are public routes. `/forgot-password` sits with `/login` and `/signup` under
+`PublicOnly`; `/check-email`, `/verify-email` and `/reset-password` work whether or not someone is
+signed in on that browser, since an emailed link is about the account it was sent to. Their token
+handling (read once, strip from the URL, POST once) lives in `useLinkToken` (`features/auth/useEmailLinks.ts`).
 | `/courses` | Course list | `CourseCard`, `CreateCourseDialog`, `EmptyState` |
 | `/courses/:id` | Topic/subtopic tree for one course | `TopicAccordion`, `SubtopicRow`, `AddTopicForm` |
 | `/subtopics/:id/review` | Review-grading flow | `ReviewPrompt`, `QualityGradeButtons`, `RevealButton` |
@@ -155,6 +166,24 @@ initials and the name carry identity.
 subtopics nested — see API.md) and renders it directly into `TopicAccordion` /
 `SubtopicRow` — no per-topic or per-subtopic fetch on expand.
 
+### Email verification & password reset flows
+- **Signup → `/check-email`**: after `201`, navigate to `/check-email` showing the address
+  it was sent to and a "Resend email" button (disabled with a 60s countdown after each
+  click; a `429` shows a "try again later" toast).
+- **Login with unverified email**: a `403 email-not-verified` response routes to
+  `/check-email` with the email prefilled — not a generic error toast.
+- **`/verify-email`**: on mount, read `token` from the URL, `history.replaceState` it away,
+  POST it once (guard against React StrictMode double-invoke), then show success ("Email
+  verified — sign in") or failure ("This link is invalid or expired" + resend option).
+- **`/login` → "Forgot password?" link → `/forgot-password`**: one email field; on submit
+  *always* show the same "If an account exists for that email, we've sent a link"
+  message — never "no such user" (mirrors the API's 202-always behavior).
+- **`/reset-password`**: same token read-and-strip pattern; form with new password +
+  confirm. On `204`, toast "Password updated — sign in" and go to `/login`. On
+  `invalid-token`, show `EmailLinkResult` with a link back to `/forgot-password`.
+- **Admin `UserTable`**: an "Unverified" `warning` badge next to users whose
+  `emailVerified` is false.
+
 ### Review-grading flow (the core interactive screen)
 **Decision: queues multiple due subtopics in one sitting** (confirmed) — entering
 `/subtopics/:id/review` starts a review session over all subtopics currently due
@@ -182,7 +211,7 @@ src/components/ui/
 ├── textarea.tsx        # subtopic notes
 ├── dialog.tsx           # create/edit course, topic, subtopic
 ├── select.tsx
-├── badge.tsx             # status: "Due", "Overdue", "Learned"
+├── badge.tsx             # status: "Due", "Overdue", "Learned", "Unverified"
 ├── card.tsx
 ├── accordion.tsx         # topic tree
 ├── toast.tsx              # success/error notifications
@@ -196,7 +225,7 @@ directly. This is the mechanism that keeps the whole app visually consistent fro
 
 ## 6. Forms
 **Decision: React Hook Form + Zod.** One consistent pattern across every form in the app
-(signup, login, create/edit course/topic/subtopic, admin panel):
+(signup, login, forgot/reset password, create/edit course/topic/subtopic, admin panel):
 ```tsx
 const courseSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -211,11 +240,21 @@ Zod schemas mirror the backend's Bean Validation rules where they overlap (e.g. 
 `@NotBlank` + `@Size` on the DTO ↔ `z.string().min(1).max(200)`), so client and server
 validation stay in sync in intent even though they're separately maintained.
 
+Reset-password schema: `newPassword` `min(8)` (matches SECURITY.md) plus a
+`confirmPassword` field checked with `.refine()` client-side only — the API receives just
+`{ token, newPassword }`.
+
 Signup form additionally captures `timezone` silently (not a user-facing field) via
 `Intl.DateTimeFormat().resolvedOptions().timeZone` and includes it in the submitted
 payload — see API.md.
 
+**Email templates** (backend, `resources/templates/email/`) follow the same brand: primary
+color for the single call-to-action button, plain-text fallback for every HTML email, the
+link also printed as text below the button, and expiry stated ("This link expires in 30
+minutes"). Sent from `Revisor <noreply@aydev.in>`.
+
 ## 7. Open items
-- Exact copy/microcopy for empty states, error toasts, confirmation dialogs.
+- Exact copy/microcopy for empty states, error toasts, confirmation dialogs, and the two
+  email templates.
 - Accessibility pass (keyboard nav through the review flow, screen-reader labels) — deferred
   to a dedicated pass once the core flow is built, not before.

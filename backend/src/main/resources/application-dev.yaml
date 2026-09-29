@@ -1,4 +1,9 @@
 spring:
+  mail:
+    # Mailpit from backend/docker-compose.yml: catches every email, sends nothing. Inbox at
+    # http://localhost:8025. Plain SMTP, no auth.
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/revisor}
     username: ${SPRING_DATASOURCE_USERNAME:revisor}
@@ -18,3 +23,6 @@ app:
   cors:
     allowed-origins:
       - http://localhost:5173
+  mail:
+    from: "Revisor <noreply@localhost>"
+    frontend-url: http://localhost:5173

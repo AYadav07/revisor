@@ -28,7 +28,7 @@ import java.util.Map;
 @RestControllerAdvice
 class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-    static final String TYPE_BASE = "https://revisor.dev/errors/";
+    static final String TYPE_BASE = "https://revisor.aydev.in/errors/";
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
@@ -45,6 +45,16 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(UnauthorizedException.class)
     ResponseEntity<Object> handleUnauthorized(UnauthorizedException ex, WebRequest request) {
         return respond(ex, request, HttpStatus.UNAUTHORIZED, "unauthorized", "Unauthorized", ex.getMessage());
+    }
+
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    ResponseEntity<Object> handleEmailNotVerified(EmailNotVerifiedException ex, WebRequest request) {
+        return respond(ex, request, HttpStatus.FORBIDDEN, "email-not-verified", "Email not verified", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    ResponseEntity<Object> handleInvalidToken(InvalidTokenException ex, WebRequest request) {
+        return respond(ex, request, HttpStatus.BAD_REQUEST, "invalid-token", "Invalid or expired link", ex.getMessage());
     }
 
     @ExceptionHandler(TooManyRequestsException.class)

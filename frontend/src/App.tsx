@@ -6,6 +6,10 @@ import { AuthProvider } from '@/features/auth/AuthProvider'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { PublicOnly, RequireAuth, RequireRole } from '@/features/auth/RouteGuards'
 import { SignupPage } from '@/features/auth/SignupPage'
+import { CheckEmailPage } from '@/features/auth/CheckEmailPage'
+import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
+import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage'
 import { DEFAULT_AUTHENTICATED_PATH, ROUTES } from '@/routes'
 
 // Each screen behind the shell is its own chunk, fetched when first visited, so signing in doesn't
@@ -25,7 +29,13 @@ function App() {
         <Route element={<PublicOnly />}>
           <Route path={ROUTES.login} element={<LoginPage />} />
           <Route path={ROUTES.signup} element={<SignupPage />} />
+          <Route path={ROUTES.forgotPassword} element={<ForgotPasswordPage />} />
         </Route>
+        {/* Emailed links work whether or not someone is signed in on this browser: a link is about
+            the account it was sent to, not the current session. */}
+        <Route path={ROUTES.checkEmail} element={<CheckEmailPage />} />
+        <Route path={ROUTES.verifyEmail} element={<VerifyEmailPage />} />
+        <Route path={ROUTES.resetPassword} element={<ResetPasswordPage />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route path={ROUTES.dashboard} element={<DashboardPage />} />

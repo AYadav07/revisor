@@ -12,7 +12,16 @@ vi.mock('@/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api')>()
   return {
     ...actual,
-    authApi: { signup: vi.fn(), login: vi.fn(), refresh: vi.fn(), logout: vi.fn() },
+    authApi: {
+      signup: vi.fn(),
+      login: vi.fn(),
+      refresh: vi.fn(),
+      logout: vi.fn(),
+      verifyEmail: vi.fn(),
+      resendVerification: vi.fn(),
+      forgotPassword: vi.fn(),
+      resetPassword: vi.fn(),
+    },
     dashboardApi: { summary: vi.fn(), progress: vi.fn(), due: vi.fn() },
     adminApi: { listUsers: vi.fn() },
   }
@@ -91,9 +100,8 @@ describe('routing and the sign-in journey', () => {
     expect(api.login).toHaveBeenCalledWith({ email: 'ann@example.com', password: 'correct-horse' })
   })
 
-  it('creates an account, signs in with it, and lands on the dashboard — sending the browser timezone', async () => {
+  it('creates an account — sending the browser timezone — and asks the user to check their inbox', async () => {
     api.signup.mockResolvedValue(ann)
-    api.login.mockResolvedValue({ user: ann })
     const user = renderApp('/signup')
     await screen.findByText('Create your account')
 
@@ -102,14 +110,25 @@ describe('routing and the sign-in journey', () => {
     await user.type(screen.getByLabelText('Password'), 'correct-horse')
     await user.click(screen.getByRole('button', { name: 'Create account' }))
 
-    expect(await dashboardHeading()).toBeInTheDocument()
+    expect(await screen.findByText('Check your email', { selector: '[data-slot="card-title"]' })).toBeInTheDocument()
+    expect(screen.getByText('ann@example.com')).toBeInTheDocument()
     expect(api.signup).toHaveBeenCalledWith({
       name: 'Ann',
       email: 'ann@example.com',
       password: 'correct-horse',
       timezone: 'Asia/Kolkata',
     })
-    expect(api.login).toHaveBeenCalledWith({ email: 'ann@example.com', password: 'correct-horse' })
+    // Not signed in: the account can't be used until the emailed link is clicked.
+    expect(api.login).not.toHaveBeenCalled()
+  })
+
+  it('follows an emailed verification link once, even under StrictMode, then offers sign-in', async () => {
+    api.verifyEmail.mockResolvedValue(undefined)
+    renderApp('/verify-email?token=abc123', { strict: true })
+
+    expect(await screen.findByText('Email verified')).toBeInTheDocument()
+    expect(api.verifyEmail).toHaveBeenCalledTimes(1)
+    expect(api.verifyEmail).toHaveBeenCalledWith('abc123')
   })
 
   it('stays on the login page and explains a failed sign-in', async () => {

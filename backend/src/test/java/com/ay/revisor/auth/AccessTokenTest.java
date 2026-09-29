@@ -110,7 +110,7 @@ class AccessTokenTest {
     }
 
     private static UserResponse user(Role role) {
-        return new UserResponse(5L, "Ann", "ann@example.com", role, true, "UTC", NOW);
+        return new UserResponse(5L, "Ann", "ann@example.com", role, true, "UTC", NOW, true);
     }
 
     private static JwtKeys newKeys() throws Exception {

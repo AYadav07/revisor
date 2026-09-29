@@ -45,6 +45,11 @@ describe('pagesHeaders', () => {
     expect(csp).toContain("font-src 'self' https://fonts.gstatic.com")
   })
 
+  it('sends no referrer at all from the pages that receive emailed tokens', () => {
+    expect(headers).toMatch(/\/verify-email\n {2}Referrer-Policy: no-referrer/)
+    expect(headers).toMatch(/\/reset-password\n {2}Referrer-Policy: no-referrer/)
+  })
+
   it('caches hashed assets forever', () => {
     expect(headers).toMatch(/\/assets\/\*\n {2}Cache-Control: public, max-age=31536000, immutable/)
   })

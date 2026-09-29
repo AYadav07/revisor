@@ -19,7 +19,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
-@Tag(name = "Auth", description = "Sign up, sign in and session cookies. Public: these endpoints need no access token.")
+@Tag(name = "Auth", description = "Sign up, sign in, session cookies, email verification and password reset. Public: these endpoints need no access token.")
 @SecurityRequirements // public: overrides the global cookie requirement
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -30,25 +30,27 @@ class AuthController {
     private final AuthCookies cookies;
     private final Clock clock;
     private final AuthRateLimiter rateLimiter;
+    private final EmailVerificationService emailVerificationService;
 
     AuthController(AuthService authService, AccessTokenIssuer accessTokenIssuer, AuthCookies cookies, Clock clock,
-                   AuthRateLimiter rateLimiter) {
+                   AuthRateLimiter rateLimiter, EmailVerificationService emailVerificationService) {
         this.authService = authService;
         this.accessTokenIssuer = accessTokenIssuer;
         this.cookies = cookies;
         this.clock = clock;
         this.rateLimiter = rateLimiter;
+        this.emailVerificationService = emailVerificationService;
     }
 
-    @Operation(summary = "Create an account", description = "Rate-limited per IP. 409 if the email is already registered.")
+    @Operation(summary = "Create an account", description = "Creates an unverified account and emails a verification link. Rate-limited per IP. 409 if the email is already registered.")
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
     AuthUserResponse signup(@Valid @RequestBody SignupRequest request, HttpServletRequest http) {
         rateLimiter.checkSignup(http.getRemoteAddr());
-        return AuthUserResponse.from(authService.signup(request));
+        return AuthUserResponse.from(authService.signup(request, clock.instant()));
     }
 
-    @Operation(summary = "Sign in", description = "Sets the access and refresh cookies. Rate-limited per email; 401 on bad credentials or a disabled account.")
+    @Operation(summary = "Sign in", description = "Sets the access and refresh cookies. Rate-limited per email; 401 on bad credentials or a disabled account; 403 email-not-verified if the password is right but the email isn't verified.")
     @PostMapping("/login")
     ResponseEntity<SessionResponse> login(@Valid @RequestBody LoginRequest request) {
         rateLimiter.checkLogin(request.email());
@@ -72,6 +74,38 @@ class AuthController {
                 .header(HttpHeaders.SET_COOKIE, cookies.clearAccess().toString())
                 .header(HttpHeaders.SET_COOKIE, cookies.clearRefresh().toString())
                 .build();
+    }
+
+    @Operation(summary = "Verify an email address", description = "Redeems the token from the emailed link. 400 invalid-token if it is unknown, expired or already used.")
+    @PostMapping("/verify-email")
+    @ResponseStatus(HttpStatus.OK)
+    void verifyEmail(@Valid @RequestBody TokenRequest request, HttpServletRequest http) {
+        rateLimiter.checkTokenRedemption(http.getRemoteAddr());
+        emailVerificationService.verifyEmail(request.token(), clock.instant());
+    }
+
+    @Operation(summary = "Resend the verification email", description = "Always 202, whether or not the address is registered (no account enumeration). Rate-limited per address and IP.")
+    @PostMapping("/resend-verification")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    void resendVerification(@Valid @RequestBody EmailRequest request, HttpServletRequest http) {
+        rateLimiter.checkEmailSend("verify", request.email(), http.getRemoteAddr());
+        emailVerificationService.resendVerification(request.email(), clock.instant());
+    }
+
+    @Operation(summary = "Request a password reset link", description = "Always 202, whether or not the address is registered (no account enumeration). Rate-limited per address and IP.")
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    void forgotPassword(@Valid @RequestBody EmailRequest request, HttpServletRequest http) {
+        rateLimiter.checkEmailSend("reset", request.email(), http.getRemoteAddr());
+        emailVerificationService.requestPasswordReset(request.email(), clock.instant());
+    }
+
+    @Operation(summary = "Set a new password", description = "Redeems the reset token, signs the user out everywhere, and does not sign them in. 400 invalid-token if the token is unknown, expired or used.")
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void resetPassword(@Valid @RequestBody ResetPasswordRequest request, HttpServletRequest http) {
+        rateLimiter.checkTokenRedemption(http.getRemoteAddr());
+        emailVerificationService.resetPassword(request.token(), request.newPassword(), clock.instant());
     }
 
     private ResponseEntity<SessionResponse> session(AuthResult result, Instant now) {

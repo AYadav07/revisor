@@ -27,6 +27,14 @@ class AuthServiceIntegrationTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    /** A verified account, as if the emailed link had been clicked — login requires it. */
+    private void signupVerified() {
+        authService.signup(new SignupRequest("Ann", "ann@example.com", "correct-horse", "UTC"), NOW);
+        User user = userRepository.findByEmail("ann@example.com").orElseThrow();
+        user.markEmailVerified(NOW);
+        userRepository.save(user);
+    }
+
     @AfterEach
     void cleanUp() {
         refreshTokenRepository.deleteAll();
@@ -35,7 +43,7 @@ class AuthServiceIntegrationTest {
 
     @Test
     void reusingARotatedAwayToken_revokesTheWholeFamilyAndTheRevocationCommits() {
-        authService.signup(new SignupRequest("Ann", "ann@example.com", "correct-horse", "UTC"));
+        signupVerified();
         String first = authService.login(new LoginRequest("ann@example.com", "correct-horse"), NOW).refreshToken();
         String second = authService.refresh(first, NOW.plusSeconds(60)).refreshToken();
 
@@ -51,7 +59,7 @@ class AuthServiceIntegrationTest {
 
     @Test
     void loginRefreshLogout_walksTheHappyPathAndLogoutEndsTheSession() {
-        authService.signup(new SignupRequest("Ann", "ann@example.com", "correct-horse", "UTC"));
+        signupVerified();
         String first = authService.login(new LoginRequest("ann@example.com", "correct-horse"), NOW).refreshToken();
         AuthResult rotated = authService.refresh(first, NOW.plusSeconds(60));
 
@@ -65,7 +73,7 @@ class AuthServiceIntegrationTest {
 
     @Test
     void storedPasswordIsBcryptNotPlaintext() {
-        authService.signup(new SignupRequest("Ann", "ann@example.com", "correct-horse", "UTC"));
+        authService.signup(new SignupRequest("Ann", "ann@example.com", "correct-horse", "UTC"), NOW);
 
         assertThat(userRepository.findByEmail("ann@example.com")).get()
                 .extracting(User::getPasswordHash).asString().startsWith("$2");

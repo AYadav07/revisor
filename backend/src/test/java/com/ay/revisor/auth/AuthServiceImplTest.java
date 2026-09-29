@@ -1,6 +1,7 @@
 package com.ay.revisor.auth;
 
 import com.ay.revisor.shared.ConflictException;
+import com.ay.revisor.shared.EmailNotVerifiedException;
 import com.ay.revisor.shared.UnauthorizedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,8 @@ class AuthServiceImplTest {
     private UserRepository userRepository;
     @Mock
     private RefreshTokenRepository refreshTokenRepository;
+    @Mock
+    private EmailTokenIssuer emailTokenIssuer;
 
     // Low cost factor keeps the suite fast; the production bean uses the default strength.
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(4);
@@ -42,7 +45,8 @@ class AuthServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new AuthServiceImpl(userRepository, refreshTokenRepository, passwordEncoder, new UserMapperImpl());
+        service = new AuthServiceImpl(userRepository, refreshTokenRepository, passwordEncoder, new UserMapperImpl(),
+                emailTokenIssuer);
     }
 
     @Test
@@ -51,7 +55,7 @@ class AuthServiceImplTest {
         when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         UserResponse response = service.signup(
-                new SignupRequest(" Ann ", "  Ann@Example.COM ", "correct-horse", "Asia/Kolkata"));
+                new SignupRequest(" Ann ", "  Ann@Example.COM ", "correct-horse", "Asia/Kolkata"), NOW);
 
         ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
         verify(userRepository).saveAndFlush(saved.capture());
@@ -61,15 +65,18 @@ class AuthServiceImplTest {
         assertThat(passwordEncoder.matches("correct-horse", saved.getValue().getPasswordHash())).isTrue();
         assertThat(response.role()).isEqualTo(Role.USER);
         assertThat(response.enabled()).isTrue();
+        assertThat(response.emailVerified()).isFalse();
+        verify(emailTokenIssuer).issueVerification(saved.getValue(), NOW);
     }
 
     @Test
     void signup_throwsConflict_whenEmailAlreadyRegistered() {
         when(userRepository.existsByEmail("ann@example.com")).thenReturn(true);
 
-        assertThatThrownBy(() -> service.signup(new SignupRequest("Ann", "ann@example.com", "correct-horse", "UTC")))
+        assertThatThrownBy(() -> service.signup(new SignupRequest("Ann", "ann@example.com", "correct-horse", "UTC"), NOW))
                 .isInstanceOf(ConflictException.class);
         verify(userRepository, never()).saveAndFlush(any());
+        verify(emailTokenIssuer, never()).issueVerification(any(), any());
     }
 
     @Test
@@ -77,8 +84,9 @@ class AuthServiceImplTest {
         when(userRepository.existsByEmail("ann@example.com")).thenReturn(false);
         when(userRepository.saveAndFlush(any(User.class))).thenThrow(new DataIntegrityViolationException("dup"));
 
-        assertThatThrownBy(() -> service.signup(new SignupRequest("Ann", "ann@example.com", "correct-horse", "UTC")))
+        assertThatThrownBy(() -> service.signup(new SignupRequest("Ann", "ann@example.com", "correct-horse", "UTC"), NOW))
                 .isInstanceOf(ConflictException.class);
+        verify(emailTokenIssuer, never()).issueVerification(any(), any());
     }
 
     @Test
@@ -111,6 +119,25 @@ class AuthServiceImplTest {
                 .isInstanceOf(UnauthorizedException.class).hasMessage("Invalid credentials");
 
         verify(refreshTokenRepository, never()).save(any());
+    }
+
+    @Test
+    void login_withRightPasswordButUnverifiedEmail_is403EmailNotVerified_andIssuesNoToken() {
+        when(userRepository.findByEmail("ann@example.com")).thenReturn(Optional.of(unverifiedUser()));
+
+        assertThatThrownBy(() -> service.login(new LoginRequest("ann@example.com", "correct-horse"), NOW))
+                .isInstanceOf(EmailNotVerifiedException.class);
+
+        verify(refreshTokenRepository, never()).save(any());
+    }
+
+    @Test
+    void login_unverifiedAccountWithWrongPassword_stillLooksLikeAnyBadLogin() {
+        when(userRepository.findByEmail("ann@example.com")).thenReturn(Optional.of(unverifiedUser()));
+
+        // Verification state is only revealed to someone who knows the password.
+        assertThatThrownBy(() -> service.login(new LoginRequest("ann@example.com", "wrong-password"), NOW))
+                .isInstanceOf(UnauthorizedException.class).hasMessage("Invalid credentials");
     }
 
     @Test
@@ -184,6 +211,16 @@ class AuthServiceImplTest {
     }
 
     private User user(boolean enabled) {
+        User user = unverifiedUser(enabled);
+        user.markEmailVerified(NOW.minusSeconds(3600));
+        return user;
+    }
+
+    private User unverifiedUser() {
+        return unverifiedUser(true);
+    }
+
+    private User unverifiedUser(boolean enabled) {
         User user = new User("Ann", "ann@example.com", passwordEncoder.encode("correct-horse"), Role.USER, enabled, "UTC");
         ReflectionTestUtils.setField(user, "id", USER_ID);
         return user;

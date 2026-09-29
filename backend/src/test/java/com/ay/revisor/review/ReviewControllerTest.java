@@ -53,7 +53,7 @@ class ReviewControllerTest extends ControllerTestBase {
         mvc.perform(post("/api/v1/subtopics/" + sub + "/review").cookie(ann.cookie())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"quality\":4}"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.type").value("https://revisor.dev/errors/conflict"));
+                .andExpect(jsonPath("$.type").value("https://revisor.aydev.in/errors/conflict"));
     }
 
     @Test

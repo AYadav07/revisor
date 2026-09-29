@@ -44,6 +44,34 @@ const cases: Case[] = [
   },
   { name: 'authApi.refresh', call: () => authApi.refresh(), method: 'POST', path: '/auth/refresh' },
   { name: 'authApi.logout', call: () => authApi.logout(), method: 'POST', path: '/auth/logout' },
+  {
+    name: 'authApi.verifyEmail',
+    call: () => authApi.verifyEmail('tok'),
+    method: 'POST',
+    path: '/auth/verify-email',
+    body: { token: 'tok' },
+  },
+  {
+    name: 'authApi.resendVerification',
+    call: () => authApi.resendVerification('a@x.co'),
+    method: 'POST',
+    path: '/auth/resend-verification',
+    body: { email: 'a@x.co' },
+  },
+  {
+    name: 'authApi.forgotPassword',
+    call: () => authApi.forgotPassword('a@x.co'),
+    method: 'POST',
+    path: '/auth/forgot-password',
+    body: { email: 'a@x.co' },
+  },
+  {
+    name: 'authApi.resetPassword',
+    call: () => authApi.resetPassword({ token: 'tok', newPassword: 'battery-staple' }),
+    method: 'POST',
+    path: '/auth/reset-password',
+    body: { token: 'tok', newPassword: 'battery-staple' },
+  },
 
   // courses
   { name: 'courseApi.listCourses', call: () => courseApi.listCourses(), method: 'GET', path: '/courses' },

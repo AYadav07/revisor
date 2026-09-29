@@ -1,6 +1,7 @@
 package com.ay.revisor.auth;
 
 import com.ay.revisor.shared.ConflictException;
+import com.ay.revisor.shared.EmailNotVerifiedException;
 import com.ay.revisor.shared.UnauthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,33 +31,38 @@ class AuthServiceImpl implements AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper mapper;
+    private final EmailTokenIssuer emailTokenIssuer;
     /** Matched against when the email is unknown, so "no such user" costs the same as "wrong password". */
     private final String dummyPasswordHash;
 
     AuthServiceImpl(UserRepository userRepository, RefreshTokenRepository refreshTokenRepository,
-                     PasswordEncoder passwordEncoder, UserMapper mapper) {
+                     PasswordEncoder passwordEncoder, UserMapper mapper, EmailTokenIssuer emailTokenIssuer) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.mapper = mapper;
+        this.emailTokenIssuer = emailTokenIssuer;
         this.dummyPasswordHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
     @Override
-    public UserResponse signup(SignupRequest request) {
+    public UserResponse signup(SignupRequest request, Instant now) {
         String email = normalize(request.email());
         if (userRepository.existsByEmail(email)) {
             throw emailTaken();
         }
         User user = new User(request.name().trim(), email, passwordEncoder.encode(request.password()),
                 Role.USER, true, request.timezone());
+        User saved;
         try {
-            UserResponse created = mapper.toResponse(userRepository.saveAndFlush(user));
-            log.info("User {} signed up", created.id());
-            return created;
+            saved = userRepository.saveAndFlush(user);
         } catch (DataIntegrityViolationException e) {
             throw emailTaken(); // lost a race with a concurrent signup for the same email
         }
+        UserResponse created = mapper.toResponse(saved);
+        emailTokenIssuer.issueVerification(saved, now);
+        log.info("User {} signed up", created.id());
+        return created;
     }
 
     @Override
@@ -71,6 +77,10 @@ class AuthServiceImpl implements AuthService {
                 log.info("Login failed for user {}: {}", user.getId(), passwordMatches ? "account disabled" : "wrong password");
             }
             throw new UnauthorizedException("Invalid credentials");
+        }
+        if (!user.isEmailVerified()) {
+            log.info("Login refused for user {}: email not verified", user.getId());
+            throw new EmailNotVerifiedException();
         }
         log.info("User {} logged in", user.getId());
         return issueToken(user, UUID.randomUUID(), now);

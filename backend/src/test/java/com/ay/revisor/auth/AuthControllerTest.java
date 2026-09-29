@@ -64,7 +64,7 @@ class AuthControllerTest {
         mvc.perform(post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(SIGNUP))
                 .andExpect(status().isConflict())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.type").value("https://revisor.dev/errors/conflict"))
+                .andExpect(jsonPath("$.type").value("https://revisor.aydev.in/errors/conflict"))
                 .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.instance").value("/api/v1/auth/signup"));
     }
@@ -75,7 +75,7 @@ class AuthControllerTest {
                         .content("""
                                 {"name":"","email":"nope","password":"short","timezone":"Mars/X"}"""))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("https://revisor.dev/errors/validation-failed"))
+                .andExpect(jsonPath("$.type").value("https://revisor.aydev.in/errors/validation-failed"))
                 .andExpect(jsonPath("$.errors[?(@.field=='timezone')]").exists())
                 .andExpect(jsonPath("$.errors[?(@.field=='password')]").exists())
                 .andExpect(jsonPath("$.errors[?(@.field=='email')]").exists())
@@ -99,6 +99,21 @@ class AuthControllerTest {
         assertThat(refresh).contains("HttpOnly", "SameSite=Strict", "Path=/api/v1/auth", "Max-Age=1209600");
         // Local profile: Secure is off because local dev is plain HTTP. Production default is on.
         assertThat(access).doesNotContain("Secure");
+    }
+
+    @Test
+    void login_beforeVerifyingTheEmail_is403EmailNotVerified_andSetsNoCookies() throws Exception {
+        signupUnverified();
+
+        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(LOGIN))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://revisor.aydev.in/errors/email-not-verified"))
+                .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
+        // A wrong password still gets the plain 401: verification state is only revealed to the owner.
+        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"ann@example.com\",\"password\":\"wrong-password\"}"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -127,7 +142,7 @@ class AuthControllerTest {
         mvc.perform(get("/api/v1/does-not-exist"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType("application/problem+json;charset=UTF-8"))
-                .andExpect(jsonPath("$.type").value("https://revisor.dev/errors/unauthorized"))
+                .andExpect(jsonPath("$.type").value("https://revisor.aydev.in/errors/unauthorized"))
                 .andExpect(jsonPath("$.instance").value("/api/v1/does-not-exist"));
         mvc.perform(get("/api/v1/does-not-exist").cookie(new Cookie("accessToken", "forged.token.value")))
                 .andExpect(status().isUnauthorized());
@@ -212,7 +227,7 @@ class AuthControllerTest {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists(HttpHeaders.RETRY_AFTER))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.type").value("https://revisor.dev/errors/too-many-requests"))
+                .andExpect(jsonPath("$.type").value("https://revisor.aydev.in/errors/too-many-requests"))
                 .andExpect(jsonPath("$.status").value(429))
                 .andExpect(jsonPath("$.instance").value("/api/v1/auth/login"));
         // Another account is untouched.
@@ -261,7 +276,15 @@ class AuthControllerTest {
         return "{\"name\":\"N\",\"email\":\"" + email + "\",\"password\":\"correct-horse\",\"timezone\":\"UTC\"}";
     }
 
+    /** Signs up and verifies, as if the emailed link had been clicked — login requires it. */
     private void signup() throws Exception {
+        signupUnverified();
+        User user = userRepository.findByEmail("ann@example.com").orElseThrow();
+        user.markEmailVerified(java.time.Instant.now());
+        userRepository.save(user);
+    }
+
+    private void signupUnverified() throws Exception {
         mvc.perform(post("/api/v1/auth/signup").contentType(MediaType.APPLICATION_JSON).content(SIGNUP))
                 .andExpect(status().isCreated());
     }

@@ -21,7 +21,7 @@ interface AuthLayoutProps {
   children: ReactNode
 }
 
-/** Minimal centered-card layout for /login and /signup — no nav (UI_DESIGN.md §3). */
+/** Minimal centered-card layout for the public auth pages (sign in, sign up, email links) — no nav (UI_DESIGN.md §3). */
 export function AuthLayout({
   title,
   description,

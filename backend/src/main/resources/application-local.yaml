@@ -16,3 +16,11 @@ app:
   cors:
     allowed-origins:
       - http://localhost:5173
+  mail:
+    # No SMTP server in the in-memory profile: emails are noted in the log, not sent. Use the dev
+    # profile with Mailpit (backend/docker-compose.yml) to receive and click real links.
+    transport: log
+    from: "Revisor <noreply@localhost>"
+    frontend-url: http://localhost:5173
+  notifications:
+    retry-backoff: 50ms

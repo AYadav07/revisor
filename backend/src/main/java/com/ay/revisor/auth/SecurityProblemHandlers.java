@@ -23,7 +23,7 @@ import java.util.Map;
 @Component
 class SecurityProblemHandlers implements AuthenticationEntryPoint, AccessDeniedHandler {
 
-    private static final String TYPE_BASE = "https://revisor.dev/errors/";
+    private static final String TYPE_BASE = "https://revisor.aydev.in/errors/";
 
     private final JsonMapper jsonMapper;
 

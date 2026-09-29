@@ -1,18 +1,21 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { Link, useNavigate } from 'react-router-dom'
 import { AuthLayout } from '@/components/AuthLayout'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { ROUTES } from '@/routes'
-import { loginErrorMessage } from './authErrors'
+import { isEmailNotVerified, loginErrorMessage } from './authErrors'
 import { loginSchema, type LoginValues } from './authSchemas'
+import type { CheckEmailState } from './CheckEmailPage'
 import { useAuth } from './useAuth'
 
 export function LoginPage() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [formError, setFormError] = useState<string | null>(null)
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -25,6 +28,12 @@ export function LoginPage() {
       await login(values)
       // Nothing to do on success: <PublicOnly> sees the new session and redirects.
     } catch (error) {
+      if (isEmailNotVerified(error)) {
+        // Right password, unverified email: not an error to show here, but a step still to take.
+        const state: CheckEmailState = { email: values.email, reason: 'unverified' }
+        navigate(ROUTES.checkEmail, { state })
+        return
+      }
       setFormError(loginErrorMessage(error))
     }
   }
@@ -64,7 +73,12 @@ export function LoginPage() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <div className="flex items-center justify-between">
+                  <FormLabel>Password</FormLabel>
+                  <Button asChild variant="link" className="h-auto p-0 text-sm">
+                    <Link to={ROUTES.forgotPassword}>Forgot password?</Link>
+                  </Button>
+                </div>
                 <FormControl>
                   <Input type="password" autoComplete="current-password" {...field} />
                 </FormControl>
