@@ -167,7 +167,7 @@ classic brute-force/credential-stuffing surface, and every endpoint that costs a
 - `/auth/signup`: looser per-IP limit (~10/hour) against automated account creation.
 - `/auth/resend-verification` and `/auth/forgot-password`: 3 per email per hour **and**
   ~10 per IP per hour → 429. Protects users' inboxes from being spammed and protects the
-  SMTP2GO free quota (200/day, 1,000/month — DEPLOYMENT.md). A rate-limited request gets
+  Resend free quota (100/day, 3,000/month — DEPLOYMENT.md). A rate-limited request gets
   the 429 (not the usual 202), which reveals nothing about whether the email exists.
 - `/auth/verify-email` and `/auth/reset-password`: ~20 per IP per hour (tokens are
   unguessable; this just caps noise).
@@ -189,9 +189,9 @@ Implementation notes:
 ## Secrets management
 JWT signing private key, DB credentials, SMTP credentials: environment variables / local
 `.env` (gitignored) in dev; VPS filesystem with restricted permissions or platform secret
-store in production — never committed, never baked into a Docker image. Use an SMTP2GO
-**SMTP user** created specifically for Revisor (revocable independently), not the account
-login.
+store in production — never committed, never baked into a Docker image. The SMTP password
+is a Resend **API key with sending access only**, created just for Revisor (revocable on its
+own) — never a full-access key.
 The `dev` profile reads its pair from `backend/secrets/` by default (gitignored, created once by
 `backend/scripts/generate-jwt-keys.sh`, private key `0600`); `JWT_PRIVATE_KEY_PATH` /
 `JWT_PUBLIC_KEY_PATH` override it. At startup the pair is rejected unless it is at least 2048 bits

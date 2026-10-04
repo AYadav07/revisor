@@ -89,6 +89,7 @@ best practice" without raising it first.
   `./gradlew test -PincludePostgresTests`.
 - Open items live in each doc's "Open items"/"Open questions" section — check before
   assuming something is settled. As of this writing the doc set has no open decisions —
-  the domain (`aydev.in`, GoDaddy), backend hosting platform and the admin-delete cascade
+  the domain (`aydev.in`: GoDaddy registrar, DNS on Cloudflare), the email provider (Resend),
+  backend hosting platform and the admin-delete cascade
   edge cases have all been decided.
 - When this file conflicts with the other docs, they win — update this summary to match.

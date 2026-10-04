@@ -62,7 +62,7 @@ scheduling logic — topics get forgotten or revised too late/too early.
 10. Frontend: Cloudflare Pages deployment on a custom domain
 11. Email verification + password reset: `notification` module (EmailChannel,
     SmtpEmailSender, templates), verification/reset tokens and endpoints, frontend
-    verify/reset screens, Mailpit locally, SMTP2GO in production with `aydev.in` verified
+    verify/reset screens, Mailpit locally, Resend in production with `aydev.in` verified
     as the sender domain (SPF/DKIM/DMARC) — see ARCHITECTURE.md §8, SECURITY.md,
     DEPLOYMENT.md
 12. Deploy a demo instance — backend on GCP e2-micro at `api.revisor.aydev.in`, frontend

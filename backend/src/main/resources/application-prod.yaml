@@ -1,7 +1,7 @@
 # Production: everything environment-specific comes from env vars — nothing secret or
 # host-specific is committed (SECURITY.md "Secrets management", DEPLOYMENT.md).
 spring:
-  # SMTP2GO in production (DEPLOYMENT.md "Email delivery"). Port 587 with STARTTLS — GCP blocks port 25.
+  # Resend in production (DEPLOYMENT.md "Email delivery"). Port 587 with STARTTLS — GCP blocks port 25.
   # Switching provider = new values here, never new code.
   mail:
     host: ${MAIL_HOST}

@@ -52,8 +52,8 @@ One-time setup, once the backend is live at `https://api.revisor.aydev.in`:
    Node comes from `frontend/.nvmrc`.
 3. Environment variables → **Production**: `VITE_API_URL` = `https://api.revisor.aydev.in`. Set it for
    **Preview** too (the same value is fine), or preview builds fail the guard.
-4. Custom domains → add **`revisor.aydev.in`**, then in GoDaddy add a CNAME `revisor` → the Pages
-   project's `<project>.pages.dev` host. The backend's `.env` must list exactly this origin in
+4. Custom domains → add **`revisor.aydev.in`**. The domain's DNS is on Cloudflare, so Pages creates
+   the `revisor` CNAME itself. The backend's `.env` must list exactly this origin in
    `APP_CORS_ALLOWED_ORIGINS` (`deploy/README.md`).
 5. Push to `main`, open `https://revisor.aydev.in` and sign up.
 

@@ -43,10 +43,12 @@ On the VM, the deploy directory (`/opt/revisor` by default) holds:
 
 ### 2. DNS
 
-In GoDaddy's DNS for `aydev.in`: an **A record** `api.revisor` → the VM's static IP, giving
-`api.revisor.aydev.in`. The frontend's `revisor.aydev.in` points at Cloudflare Pages separately. Caddy can
-only get a certificate after this record resolves. The SMTP2GO sender records (SPF, DKIM, DMARC) go in
-the same DNS zone — DEPLOYMENT.md "Email delivery".
+`aydev.in`'s DNS is on **Cloudflare** (GoDaddy is only the registrar), so in Cloudflare → DNS → Records
+add an **A record** `api.revisor` → the VM's static IP, giving `api.revisor.aydev.in`, with proxy status
+**DNS only** (grey cloud) — Caddy issues its own certificate, and the rate limits need real client IPs.
+The frontend's `revisor.aydev.in` points at Cloudflare Pages separately. Caddy can only get a certificate
+after this record resolves. The Resend sender records and DMARC go in the same zone — DEPLOYMENT.md
+"Email delivery".
 
 ### 3. Prepare the VM
 

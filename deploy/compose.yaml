@@ -58,7 +58,7 @@ services:
       JWT_PRIVATE_KEY_PATH: /run/secrets/jwt/jwt_private.pem
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt_public.pem
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:?set APP_CORS_ALLOWED_ORIGINS in .env}
-      # Transactional email over plain SMTP (DEPLOYMENT.md "Email delivery"): SMTP2GO today; another
+      # Transactional email over plain SMTP (DEPLOYMENT.md "Email delivery"): Resend today; another
       # provider is new values in .env, not new code.
       MAIL_HOST: ${MAIL_HOST:?set MAIL_HOST in .env}
       MAIL_PORT: ${MAIL_PORT:-587}

@@ -69,12 +69,14 @@ Oracle Cloud Always Free (more generous specs) was considered as an alternative 
 chosen — GCP was picked for familiarity/ecosystem fit. Revisit only if the 1 GB ceiling
 becomes a real operational problem, not preemptively.
 
-## Email delivery — SMTP2GO over plain SMTP
-**Decision: SMTP2GO free plan, reached over standard SMTP only** (no SDK, no
-provider-hosted templates). Free tier: 1,000 emails/month, 200/day, no time limit —
-far above Revisor's verification/reset volume. Emails over the monthly quota are
-rejected, not queued, which is acceptable because sending is async and never blocks a
-request (ARCHITECTURE.md §8), and users can re-request links.
+## Email delivery — Resend over plain SMTP
+**Decision: Resend free plan, reached over standard SMTP only** (no SDK, no
+provider-hosted templates). Free tier: 3,000 emails/month, 100/day, 3 domains — far above
+Revisor's verification/reset volume. Mail over a quota isn't delivered, which is acceptable
+because sending is async and never blocks a request (ARCHITECTURE.md §8), and users can
+re-request links. (SMTP2GO was the first choice but was dropped at signup: it requires a
+phone number, and Resend doesn't add anything Revisor needs over it. Nothing in the code
+was specific to it.)
 
 **Why plain SMTP:** every transactional provider speaks it, so the provider is a config
 value, not a code dependency. Switching (Brevo, Resend, SES, Mailgun…) = new SMTP
@@ -82,28 +84,30 @@ credentials + new DNS records; no code changes.
 
 **Production config** (VM `.env`, passed through by `deploy/compose.yaml`):
 ```
-MAIL_HOST=mail.smtp2go.com
-MAIL_PORT=587            # or 2525; GCP blocks outbound port 25 — never use 25
+MAIL_HOST=smtp.resend.com
+MAIL_PORT=587            # STARTTLS (2587 also works); GCP blocks outbound port 25 — never use 25
 MAIL_STARTTLS=true
-MAIL_USERNAME=<SMTP2GO SMTP user created for Revisor>
-MAIL_PASSWORD=<its password>
+MAIL_USERNAME=resend     # literally "resend" — Resend's SMTP username for every account
+MAIL_PASSWORD=<a Resend API key with sending access only>
 APP_MAIL_FROM="Revisor <noreply@aydev.in>"
 APP_FRONTEND_URL=https://revisor.aydev.in   # base for links in emails
 ```
 
-**One-time SMTP2GO setup:**
-1. Add and verify `aydev.in` as the sender domain — until a domain is verified, the free
-   plan caps sending at 25/hour.
-2. Add the DNS records SMTP2GO provides in GoDaddy: **SPF** and **DKIM** (CNAMEs), plus a
-   **DMARC** TXT record (`_dmarc.aydev.in`, start with `p=none`, tighten later). Without
-   these, mail lands in spam.
-3. Create a dedicated **SMTP user** for Revisor (revocable independently of the account
-   login).
-4. **Disable click tracking and open tracking** — click tracking rewrites links through
-   the provider's redirect domain, which would wrap the verification/reset token links
-   (SECURITY.md).
-5. New accounts go through a short compliance review with reduced limits until passed —
-   do this before the demo deploy, not on launch day.
+**One-time Resend setup:**
+1. Sign up with `amresh@aydev.in` (a Cloudflare Email Routing alias that forwards to Gmail —
+   see §DNS) and add `aydev.in` as a sending domain.
+2. Add the DNS records Resend shows in **Cloudflare → DNS → Records**, every one set to
+   **DNS only** (grey cloud): DKIM, plus the SPF/MX it uses for bounces — usually on a
+   subdomain such as `send.aydev.in`, so it doesn't clash with the apex SPF record Email
+   Routing created. If it ever needs SPF on the apex, merge it into that single `v=spf1`
+   record — a domain may have only one. Add **DMARC** too: TXT `_dmarc`,
+   `v=DMARC1; p=none; rua=mailto:amresh@aydev.in` (tighten to `quarantine` once reports
+   show SPF/DKIM passing). Then **Verify** in Resend. Without these, mail lands in spam.
+3. Create an **API key with sending access only**, restricted to `aydev.in`, just for Revisor
+   — it is the SMTP password, revocable on its own.
+4. **Keep click and open tracking off** for the domain — click tracking rewrites links
+   through the provider's redirect domain, which would wrap the verification/reset token
+   links (SECURITY.md).
 
 **Switching providers later:** set up the new provider's domain + DNS records, swap the
 `MAIL_*` values, redeploy, then remove the old provider's DKIM records. The only
@@ -129,11 +133,23 @@ domain (~$10-12/year) is therefore a required piece of infrastructure for this
 architecture, not a nice-to-have. The same domain is also the email sender domain (see
 §Email delivery).
 
-**Domain: decided — `aydev.in`, registered at GoDaddy (Sept 2026).** DNS stays at GoDaddy:
-it holds the `revisor` CNAME, the `api.revisor` A record, and the SMTP2GO SPF/DKIM/DMARC
-records. Revisor lives on a subdomain (`revisor.aydev.in`) rather than the apex, leaving
-`aydev.in` itself free for other uses; cookies still work because both hosts share the
-registrable domain `aydev.in`.
+**Domain: decided — `aydev.in`, registered at GoDaddy (Sept 2026).** Revisor lives on a
+subdomain (`revisor.aydev.in`) rather than the apex, leaving `aydev.in` itself free for other
+uses; cookies still work because both hosts share the registrable domain `aydev.in`.
+
+### DNS — Cloudflare, not GoDaddy
+GoDaddy is only the registrar: the domain's nameservers are Cloudflare's, so **every DNS record
+is managed in Cloudflare → DNS → Records** (GoDaddy's own DNS page is inert for this domain).
+- `revisor` → CNAME to the Pages project. Added automatically when `revisor.aydev.in` is added as
+  a custom domain in the Pages project.
+- `api.revisor` → A record to the VM's static IP, **DNS only** (grey cloud). Not proxied: Caddy
+  gets its own Let's Encrypt certificate, and through Cloudflare's proxy the backend would see
+  Cloudflare's IPs instead of the client's, breaking the per-IP rate limits (SECURITY.md).
+- **Email Routing** (Cloudflare, free) for receiving: `amresh@aydev.in` forwards to the owner's
+  Gmail; used as the sign-up address for services that refuse a Gmail address. Enabling it adds
+  the apex MX records and an SPF record (`v=spf1 include:_spf.mx.cloudflare.net ~all`).
+  `noreply@aydev.in` only sends and needs no mailbox.
+- Resend's sending records and `_dmarc` (§Email delivery), all **DNS only**.
 
 **Build config** (Pages project settings — full steps in `frontend/README.md`): root directory
 `frontend`, build command `npm run build`, output directory `dist`, Node from `frontend/.nvmrc`.
@@ -171,7 +187,7 @@ Every place Redis could plausibly show up already has a simpler answer at this s
 GitHub Actions (`.github/workflows/backend.yml`), triggered by changes under `backend/`, `deploy/`
 or the workflow itself:
 1. **test** — every PR and push: `./gradlew test -PincludePostgresTests` (the Testcontainers suites
-   included; the runner has Docker). Email tests use GreenMail — CI never talks to SMTP2GO.
+   included; the runner has Docker). Email tests use GreenMail — CI never talks to a real provider.
 2. **image** — push to `main` only, after tests pass: build and push
    `ghcr.io/ayadav07/revisor-backend`, tagged `latest` and the commit SHA (for rollback).
 3. **deploy** — in the `production` environment: copy `deploy/compose.yaml` and `deploy/Caddyfile` to
@@ -211,8 +227,8 @@ JSON logs in production via Spring Boot's built-in structured logging (`logging.
 ecs`, set in `application-prod.yaml`) rather than `logstash-logback-encoder` — same result, one less
 dependency. Each record carries the `requestId` from the `X-Request-Id` correlation header. Plain text
 locally. The mail health indicator is **disabled** (`management.health.mail.enabled=false`) — an
-SMTP2GO blip shouldn't mark the whole backend unhealthy and trigger restarts. Email delivery issues
-surface via error logs and SMTP2GO's activity page (5-day retention on the free plan).
+provider blip shouldn't mark the whole backend unhealthy and trigger restarts. Email delivery issues
+surface via error logs and Resend's dashboard (Emails/Logs).
 
 ### Production profile (`SPRING_PROFILES_ACTIVE=prod`)
 All environment-specific values come from env vars; the app fails at startup if any is missing:

@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * The only real {@link EmailSender}: plain SMTP through Spring's {@link JavaMailSender}, configured by
- * {@code spring.mail.*}. Every transactional provider speaks SMTP, so SMTP2GO → any other provider is a
+ * {@code spring.mail.*}. Every transactional provider speaks SMTP, so Resend → any other provider is a
  * change of host and credentials, not of code (DEPLOYMENT.md). Mailpit locally, GreenMail in tests.
  */
 @Component

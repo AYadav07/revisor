@@ -217,7 +217,7 @@ resources/templates/
 - **O** — SMS = new `SmsChannel` + `SmsSender` + implementation + templates + one config
   line. No existing class is edited.
 - **L** — any `NotificationChannel` / `EmailSender` implementation is substitutable
-  (SMTP2GO → Brevo is config; Mailpit in dev; GreenMail in tests).
+  (Resend → any other SMTP provider is config; Mailpit in dev; GreenMail in tests).
 - **I** — separate `EmailSender` and `SmsSender`; a single `send(to, subject, body)` would
   force SMS to ignore `subject`.
 - **D** — `auth` depends only on event types in `shared/`; concrete senders are wired by
@@ -302,7 +302,7 @@ page-by-page layout, forms) lives in **UI_DESIGN.md** — read both before build
 - Backend: Spring Boot 4 (Java 25), Spring Data JPA, Spring Security, PostgreSQL, Flyway
 - Auth: Nimbus JOSE+JWT (RS256), BCrypt (via `spring-security-crypto`), Bucket4j (rate limiting)
 - Email: `spring-boot-starter-mail` (JavaMailSender over SMTP) — the only new runtime
-  dependency; templates and retry are plain code. SMTP2GO in production, Mailpit locally
+  dependency; templates and retry are plain code. Resend in production, Mailpit locally
   (see DEPLOYMENT.md)
 - Mapping/validation: MapStruct, Bean Validation — plain Java, no Lombok
 - API docs: springdoc-openapi (Swagger UI, gated/disabled in prod — see SECURITY.md)
@@ -331,6 +331,6 @@ page-by-page layout, forms) lives in **UI_DESIGN.md** — read both before build
 integration test (happy path + main failure mode).
 
 ## 12. Open questions
-- None currently. The domain is decided — `aydev.in` (registered at GoDaddy), with the
+- None currently. The domain is decided — `aydev.in` (registered at GoDaddy, DNS on Cloudflare), with the
   frontend at `revisor.aydev.in` and the API at `api.revisor.aydev.in` (see DEPLOYMENT.md);
   backend hosting is GCP e2-micro free tier.
