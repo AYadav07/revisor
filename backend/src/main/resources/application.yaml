@@ -25,6 +25,19 @@ management:
       show-details: never
       probes:
         enabled: true
+  health:
+    mail:
+      # An email provider blip must not mark the whole backend unhealthy and get it restarted
+      # (DEPLOYMENT.md "Observability"); delivery failures show up in the logs instead.
+      enabled: false
+
+app:
+  notifications:
+    # Which channels each notification goes out on (ARCHITECTURE.md §8). Adding SMS later = a line here.
+    # Brackets keep the enum names intact as map keys.
+    routes:
+      "[VERIFY_EMAIL]": [EMAIL]
+      "[PASSWORD_RESET]": [EMAIL]
 
 logging:
   pattern:

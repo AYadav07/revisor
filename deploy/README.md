@@ -43,9 +43,12 @@ On the VM, the deploy directory (`/opt/revisor` by default) holds:
 
 ### 2. DNS
 
-Once the domain is chosen (DEPLOYMENT.md "Open items"): an **A record** `api.<domain>` → the VM's
-static IP. The frontend's `app.<domain>` points at Cloudflare Pages separately. Caddy can only get a
-certificate after this record resolves.
+`aydev.in`'s DNS is on **Cloudflare** (GoDaddy is only the registrar), so in Cloudflare → DNS → Records
+add an **A record** `api.revisor` → the VM's static IP, giving `api.revisor.aydev.in`, with proxy status
+**DNS only** (grey cloud) — Caddy issues its own certificate, and the rate limits need real client IPs.
+The frontend's `revisor.aydev.in` points at Cloudflare Pages separately. Caddy can only get a certificate
+after this record resolves. The Resend sender records and DMARC go in the same zone — DEPLOYMENT.md
+"Email delivery".
 
 ### 3. Prepare the VM
 
@@ -71,7 +74,7 @@ sudo install -d -o deploy -g deploy -m 750 /opt/revisor
 As the `deploy` user, in `/opt/revisor`:
 
 ```bash
-# .env — fill in DB_PASSWORD (openssl rand -base64 32), API_DOMAIN, APP_CORS_ALLOWED_ORIGINS
+# .env — fill in DB_PASSWORD (openssl rand -base64 32), API_DOMAIN, APP_CORS_ALLOWED_ORIGINS, the MAIL_* SMTP settings
 cp /dev/null .env && chmod 600 .env && nano .env      # contents: see deploy/.env.example
 
 # JWT signing keys (2048-bit RSA, PKCS#8 + X.509 PEM). Generated on the VM, never copied around.
@@ -111,7 +114,7 @@ to approve each deploy). Then under Secrets and variables → Actions:
 | secret | `DEPLOY_USER` | `deploy` |
 | secret | `DEPLOY_SSH_KEY` | Contents of the private key `revisor_deploy` |
 | secret | `DEPLOY_KNOWN_HOSTS` | The verified `ssh-keyscan` line from step 5 |
-| variable | `API_DOMAIN` | e.g. `api.revisor.dev` — used for the post-deploy health check |
+| variable | `API_DOMAIN` | `api.revisor.aydev.in` — used for the post-deploy health check |
 | variable | `DEPLOY_DIR` | Optional; defaults to `/opt/revisor` |
 
 Then push to `main` (or run the workflow by hand: Actions → Backend → Run workflow). The first

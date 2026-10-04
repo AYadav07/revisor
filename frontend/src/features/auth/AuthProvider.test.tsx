@@ -113,9 +113,8 @@ describe('login / signup / logout', () => {
     expect(result.current.status).toBe('unauthenticated')
   })
 
-  it('signup creates the account, then signs in with the same credentials (signup itself sets no cookies)', async () => {
+  it('signup creates the account but does not sign in — the email must be verified first', async () => {
     api.signup.mockResolvedValue(ann)
-    api.login.mockResolvedValue({ user: ann })
     const { result } = setup()
     await waitFor(() => expect(result.current.status).toBe('unauthenticated'))
 
@@ -129,9 +128,8 @@ describe('login / signup / logout', () => {
       password: 'correct-horse',
       timezone: 'Asia/Kolkata',
     })
-    expect(api.login).toHaveBeenCalledWith({ email: ann.email, password: 'correct-horse' })
-    expect(api.signup.mock.invocationCallOrder[0]).toBeLessThan(api.login.mock.invocationCallOrder[0])
-    expect(result.current.status).toBe('authenticated')
+    expect(api.login).not.toHaveBeenCalled()
+    expect(result.current.status).toBe('unauthenticated')
   })
 
   it('a failed signup never attempts a login', async () => {

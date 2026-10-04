@@ -4,8 +4,13 @@ Living document. See ARCHITECTURE.md §1/§5 for why this stays a single-VM back
 no-Redis setup, and why that's still a "designed for scale" decision, not a shortcut.
 
 ## Local development — Docker Compose (backend)
-`backend/docker-compose.yml` runs just PostgreSQL for local development (password from the
-gitignored `backend/.env`); the backend itself runs with `./gradlew bootRun` on the `dev` profile
+`backend/docker-compose.yml` runs PostgreSQL and **Mailpit** for local development (password from
+the gitignored `backend/.env`). Mailpit catches every outgoing email — nothing is really sent — with
+its SMTP server on `localhost:1025` (the `dev` profile's `spring.mail` target, no auth, no TLS) and a
+web inbox at `http://localhost:8025` for clicking verification/reset links. It is local-only, never
+in `deploy/compose.yaml`. `./gradlew test` doesn't need it: the in-memory `local` profile sets
+`app.mail.transport=log` (emails are noted in the log, not sent), the flow tests capture rendered emails
+with a recording sender, and the SMTP transport is tested against an in-process GreenMail server. The rest of the local setup: the backend itself runs with `./gradlew bootRun` on the `dev` profile
 and the frontend with `npm run dev` — see the root README.md. The frontend is never part of a
 Compose stack, matching how it's deployed in production (see below).
 
@@ -27,8 +32,8 @@ operations in `deploy/README.md`:
     reverse_proxy backend:8080
 }
 ```
-- The domain comes from `API_DOMAIN` in the VM's `.env`, so choosing it (Open items) is a config
-  change, not a code change.
+- The domain comes from `API_DOMAIN` in the VM's `.env` — `api.revisor.aydev.in` — so it is a
+  config value, not code.
 - Only Caddy publishes ports (80/443). The backend has none — so `X-Forwarded-For`, trusted for the
   signup rate limit, can only come from Caddy, which replaces any client-sent value (verified: a
   spoofed header does not bypass the limit). Postgres is on a separate network Caddy can't reach.
@@ -55,12 +60,58 @@ recurring cost matters more than headroom.
   Caddy all share the same 1 GB instance.
 - Keep Postgres's own memory settings (`shared_buffers`, `work_mem`) conservative — the
   defaults tuned for larger instances will over-allocate here.
+- Keep the email `@Async` executor small (core 1, max 2, bounded queue) — email volume is
+  tiny and threads cost memory here.
 - Docker Compose stays the deployment mechanism (per ARCHITECTURE.md §1) — no change to
   that decision, just tighter resource limits on the containers than a paid VPS would need.
 
 Oracle Cloud Always Free (more generous specs) was considered as an alternative but not
 chosen — GCP was picked for familiarity/ecosystem fit. Revisit only if the 1 GB ceiling
 becomes a real operational problem, not preemptively.
+
+## Email delivery — Resend over plain SMTP
+**Decision: Resend free plan, reached over standard SMTP only** (no SDK, no
+provider-hosted templates). Free tier: 3,000 emails/month, 100/day, 3 domains — far above
+Revisor's verification/reset volume. Mail over a quota isn't delivered, which is acceptable
+because sending is async and never blocks a request (ARCHITECTURE.md §8), and users can
+re-request links. (SMTP2GO was the first choice but was dropped at signup: it requires a
+phone number, and Resend doesn't add anything Revisor needs over it. Nothing in the code
+was specific to it.)
+
+**Why plain SMTP:** every transactional provider speaks it, so the provider is a config
+value, not a code dependency. Switching (Brevo, Resend, SES, Mailgun…) = new SMTP
+credentials + new DNS records; no code changes.
+
+**Production config** (VM `.env`, passed through by `deploy/compose.yaml`):
+```
+MAIL_HOST=smtp.resend.com
+MAIL_PORT=587            # STARTTLS (2587 also works); GCP blocks outbound port 25 — never use 25
+MAIL_STARTTLS=true
+MAIL_USERNAME=resend     # literally "resend" — Resend's SMTP username for every account
+MAIL_PASSWORD=<a Resend API key with sending access only>
+APP_MAIL_FROM="Revisor <noreply@aydev.in>"
+APP_FRONTEND_URL=https://revisor.aydev.in   # base for links in emails
+```
+
+**One-time Resend setup:**
+1. Sign up with `amresh@aydev.in` (a Cloudflare Email Routing alias that forwards to Gmail —
+   see §DNS) and add `aydev.in` as a sending domain.
+2. Add the DNS records Resend shows in **Cloudflare → DNS → Records**, every one set to
+   **DNS only** (grey cloud): DKIM, plus the SPF/MX it uses for bounces — usually on a
+   subdomain such as `send.aydev.in`, so it doesn't clash with the apex SPF record Email
+   Routing created. If it ever needs SPF on the apex, merge it into that single `v=spf1`
+   record — a domain may have only one. Add **DMARC** too: TXT `_dmarc`,
+   `v=DMARC1; p=none; rua=mailto:amresh@aydev.in` (tighten to `quarantine` once reports
+   show SPF/DKIM passing). Then **Verify** in Resend. Without these, mail lands in spam.
+3. Create an **API key with sending access only**, restricted to `aydev.in`, just for Revisor
+   — it is the SMTP password, revocable on its own.
+4. **Keep click and open tracking off** for the domain — click tracking rewrites links
+   through the provider's redirect domain, which would wrap the verification/reset token
+   links (SECURITY.md).
+
+**Switching providers later:** set up the new provider's domain + DNS records, swap the
+`MAIL_*` values, redeploy, then remove the old provider's DKIM records. The only
+provider-specific artifacts are DNS records and credentials.
 
 ## Frontend deployment — Cloudflare Pages, separate from the backend
 **Decision: the React frontend is hosted separately from the backend**, on Cloudflare
@@ -70,29 +121,43 @@ deploy-on-push, without adding any load to the backend VM — which matters more
 the e2-micro's 1 GB RAM ceiling above.
 
 **Required consequence — a custom domain.** Because auth cookies are `SameSite=Strict`
-(SECURITY.md), the frontend and backend must share one registrable domain via subdomains:
-- Frontend: `app.<domain>` → CNAME to Cloudflare Pages
-- Backend: `api.<domain>` → A record to the backend VM
+(SECURITY.md), the frontend and backend must share one registrable domain via subdomains.
+Both live under **`aydev.in`**:
+- Frontend: `revisor.aydev.in` → CNAME to the Cloudflare Pages project (`<project>.pages.dev`),
+  added as a custom domain in the Pages project
+- Backend: `api.revisor.aydev.in` → A record to the backend VM's static external IP
 
 Using each platform's default domain (e.g. `revisor.pages.dev` + a bare VM IP) would
 silently break auth — cross-site `SameSite=Strict` cookies are simply never sent. A custom
 domain (~$10-12/year) is therefore a required piece of infrastructure for this
-architecture, not a nice-to-have.
+architecture, not a nice-to-have. The same domain is also the email sender domain (see
+§Email delivery).
 
-**Domain name: not yet finalized** — `revisor.dev` is used throughout this doc set as a
-placeholder/working example only. Final choice depends on checking availability and
-pricing across registrars; decided later, before the deploy milestone (PRD.md §6,
-milestone 10). Buying through Cloudflare Registrar (if the chosen domain is available
-there) keeps DNS for both subdomains in one dashboard, but this isn't a hard requirement —
-any registrar works as long as DNS can point `app.` and `api.` subdomains at Cloudflare
-Pages and the backend VM respectively.
+**Domain: decided — `aydev.in`, registered at GoDaddy (Sept 2026).** Revisor lives on a
+subdomain (`revisor.aydev.in`) rather than the apex, leaving `aydev.in` itself free for other
+uses; cookies still work because both hosts share the registrable domain `aydev.in`.
+
+### DNS — Cloudflare, not GoDaddy
+GoDaddy is only the registrar: the domain's nameservers are Cloudflare's, so **every DNS record
+is managed in Cloudflare → DNS → Records** (GoDaddy's own DNS page is inert for this domain).
+- `revisor` → CNAME to the Pages project. Added automatically when `revisor.aydev.in` is added as
+  a custom domain in the Pages project.
+- `api.revisor` → A record to the VM's static IP, **DNS only** (grey cloud). Not proxied: Caddy
+  gets its own Let's Encrypt certificate, and through Cloudflare's proxy the backend would see
+  Cloudflare's IPs instead of the client's, breaking the per-IP rate limits (SECURITY.md).
+- **Email Routing** (Cloudflare, free) for receiving: `amresh@aydev.in` forwards to the owner's
+  Gmail; used as the sign-up address for services that refuse a Gmail address. Enabling it adds
+  the apex MX records and an SPF record (`v=spf1 include:_spf.mx.cloudflare.net ~all`).
+  `noreply@aydev.in` only sends and needs no mailbox.
+- Resend's sending records and `_dmarc` (§Email delivery), all **DNS only**.
 
 **Build config** (Pages project settings — full steps in `frontend/README.md`): root directory
 `frontend`, build command `npm run build`, output directory `dist`, Node from `frontend/.nvmrc`.
-`VITE_API_URL=https://api.<domain>` is injected at build time; the build **fails** on Cloudflare if it
+`VITE_API_URL=https://api.revisor.aydev.in` is injected at build time; the build **fails** on Cloudflare if it
 is missing or not `https://` (`frontend/scripts/cloudflarePages.ts`), rather than shipping an app that
 calls `localhost`. The same build step writes `dist/_headers`: the CSP and other security headers
-(SECURITY.md), with `connect-src` derived from `VITE_API_URL`, and long-lived caching for the
+(SECURITY.md), with `connect-src` derived from `VITE_API_URL`, `Referrer-Policy: no-referrer` on
+`/verify-email` and `/reset-password` (tokens in the URL), and long-lived caching for the
 content-hashed `/assets/*`. With no `404.html` in the output, Pages serves `index.html` for every
 unknown path, which is the SPA fallback React Router needs.
 
@@ -112,16 +177,17 @@ handles restart-on-crash and easy redeploys at this scale.
 ## Redis: not used
 Every place Redis could plausibly show up already has a simpler answer at this scale:
 - Rate limiting (Bucket4j) — in-memory is fine with a single backend instance.
-- Refresh tokens — stored in Postgres, not Redis.
+- Refresh tokens and email verification/reset tokens — stored in Postgres, not Redis.
 - Caching — nothing in the app is expensive enough yet to need it; revisit only if a
   specific query is measurably slow under real load.
 - Sessions — not applicable (stateless JWT).
+- Email queueing — in-process `@Async` + retry is enough at this volume (ARCHITECTURE.md §8).
 
 ## CI/CD (backend)
 GitHub Actions (`.github/workflows/backend.yml`), triggered by changes under `backend/`, `deploy/`
 or the workflow itself:
 1. **test** — every PR and push: `./gradlew test -PincludePostgresTests` (the Testcontainers suites
-   included; the runner has Docker).
+   included; the runner has Docker). Email tests use GreenMail — CI never talks to a real provider.
 2. **image** — push to `main` only, after tests pass: build and push
    `ghcr.io/ayadav07/revisor-backend`, tagged `latest` and the commit SHA (for rollback).
 3. **deploy** — in the `production` environment: copy `deploy/compose.yaml` and `deploy/Caddyfile` to
@@ -160,13 +226,17 @@ healthcheck endpoint for Caddy/Docker — public, no details; nothing else is ex
 JSON logs in production via Spring Boot's built-in structured logging (`logging.structured.format.console:
 ecs`, set in `application-prod.yaml`) rather than `logstash-logback-encoder` — same result, one less
 dependency. Each record carries the `requestId` from the `X-Request-Id` correlation header. Plain text
-locally.
+locally. The mail health indicator is **disabled** (`management.health.mail.enabled=false`) — an
+provider blip shouldn't mark the whole backend unhealthy and trigger restarts. Email delivery issues
+surface via error logs and Resend's dashboard (Emails/Logs).
 
 ### Production profile (`SPRING_PROFILES_ACTIVE=prod`)
 All environment-specific values come from env vars; the app fails at startup if any is missing:
 `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`,
-`JWT_PRIVATE_KEY_PATH`, `JWT_PUBLIC_KEY_PATH` (PKCS#8 / X.509 PEM files), and
-`APP_CORS_ALLOWED_ORIGINS` (comma-separated exact origins, e.g. the `app.` subdomain). `deploy/compose.yaml`
+`JWT_PRIVATE_KEY_PATH`, `JWT_PUBLIC_KEY_PATH` (PKCS#8 / X.509 PEM files),
+`APP_CORS_ALLOWED_ORIGINS` (comma-separated exact origins — `https://revisor.aydev.in`), and the
+mail settings `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `APP_MAIL_FROM`,
+`APP_FRONTEND_URL` (see §Email delivery). `deploy/compose.yaml`
 sets them all from the VM's `.env` and `secrets/`. `prod` also turns Swagger off, forces `Secure` cookies, and trusts
 `X-Forwarded-For` from the proxy for the signup rate limit — see SECURITY.md.
 Docker's own log driver with rotation configured (`max-size`, `max-file`) — sufficient at
@@ -175,13 +245,10 @@ instance. Frontend errors: Cloudflare Pages' own build/deploy logs are sufficien
 scale — no separate frontend error-tracking service needed yet.
 
 ## Secrets in production
-RSA key pair + DB password: GCP instance filesystem with restricted permissions, or GCP
-Secret Manager — never committed, never baked into the image. Frontend build-time
+RSA key pair, DB password, SMTP credentials (`MAIL_USERNAME`/`MAIL_PASSWORD`): GCP instance
+filesystem with restricted permissions, or GCP Secret Manager — never committed, never baked into the image. Frontend build-time
 env vars (`VITE_API_URL`) are not secret and are set directly in Cloudflare Pages' project
 config.
 
 ## Open items
-- Final domain name and registrar — pending an availability/pricing check. Every `revisor.dev`
-  reference in this doc set (and `app.revisor.dev` / `api.revisor.dev` in SECURITY.md,
-  ARCHITECTURE.md) is a placeholder to swap for the real domain once chosen; the
-  subdomain-split architecture itself does not change based on which name is picked.
+- None currently — the domain is settled (`aydev.in`, see §Frontend deployment).

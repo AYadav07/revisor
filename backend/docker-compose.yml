@@ -9,6 +9,14 @@ services:
       - "5432:5432"
     volumes: ["pgdata:/var/lib/postgresql/data"]
 
+  # Catches every email the dev profile sends — nothing reaches a real inbox. Open
+  # http://localhost:8025 to read verification/reset emails and click their links.
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025" # SMTP (application-dev.yaml points spring.mail here)
+      - "8025:8025" # web inbox
+
 #  backend:
 #    build: ./backend
 #    environment:

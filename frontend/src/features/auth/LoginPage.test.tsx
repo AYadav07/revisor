@@ -1,17 +1,30 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/api'
 import { authValue } from '@/test/auth'
 import { AuthContext, type AuthContextValue } from './AuthContext'
 import { LoginPage } from './LoginPage'
 
+
+/** Where the page navigated to, and with what router state. */
+function NavigationProbe() {
+  const location = useLocation()
+  return (
+    <>
+      <output data-testid="path">{location.pathname}</output>
+      <output data-testid="state">{JSON.stringify(location.state ?? null)}</output>
+    </>
+  )
+}
+
 function renderLogin(auth: AuthContextValue = authValue()) {
   render(
     <AuthContext.Provider value={auth}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/login']}>
         <LoginPage />
+        <NavigationProbe />
       </MemoryRouter>
     </AuthContext.Provider>,
   )
@@ -69,6 +82,33 @@ describe('LoginPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password.')
     expect(screen.getByLabelText('Email')).toHaveValue('ann@example.com')
+  })
+
+  it('sends a right-password-but-unverified sign-in to /check-email with the address, not to an error', async () => {
+    const problem = {
+      type: 'https://revisor.aydev.in/errors/email-not-verified',
+      title: 'Email not verified',
+      status: 403,
+      detail: 'Verify your email address before signing in.',
+      instance: '/api/v1/auth/login',
+    }
+    const login = vi.fn().mockRejectedValue(new ApiError(403, problem.detail, problem))
+    const { user } = renderLogin(authValue({ login }))
+
+    await fillAndSubmit(user, 'ann@example.com', 'correct-horse')
+
+    await waitFor(() => expect(screen.getByTestId('path')).toHaveTextContent('/check-email'))
+    expect(JSON.parse(screen.getByTestId('state').textContent ?? 'null')).toEqual({
+      email: 'ann@example.com',
+      reason: 'unverified',
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('links to the forgot-password page', () => {
+    renderLogin()
+
+    expect(screen.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute('href', '/forgot-password')
   })
 
   it('shows the rate-limit message from the server', async () => {

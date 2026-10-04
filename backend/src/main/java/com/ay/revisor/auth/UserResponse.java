@@ -10,6 +10,7 @@ public record UserResponse(
         Role role,
         boolean enabled,
         String timezone,
-        Instant createdAt
+        Instant createdAt,
+        boolean emailVerified
 ) {
 }

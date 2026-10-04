@@ -31,6 +31,7 @@ const root: AdminUser = {
   enabled: true,
   timezone: 'UTC',
   createdAt: '2026-01-05T09:00:00Z',
+  emailVerified: true,
 }
 const bob: AdminUser = { ...root, id: 2, name: 'Bob', email: 'bob@example.com', role: 'USER' }
 const carol: AdminUser = { ...root, id: 3, name: 'Carol', email: 'carol@example.com', role: 'USER', enabled: false }

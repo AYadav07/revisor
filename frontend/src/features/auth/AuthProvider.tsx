@@ -60,13 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [queryClient],
   )
 
-  const signup = useCallback(
-    async (details: SignupRequest) => {
-      await authApi.signup(details)
-      return login({ email: details.email, password: details.password })
-    },
-    [login],
-  )
+  // Creates the account only. There's no session to start: the user can't sign in until they've
+  // clicked the link in the verification email (SECURITY.md).
+  const signup = useCallback((details: SignupRequest) => authApi.signup(details), [])
 
   const logout = useCallback(async () => {
     try {

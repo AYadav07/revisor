@@ -36,7 +36,7 @@ config: on Cloudflare (`CF_PAGES=1`) it fails unless `VITE_API_URL` is set and `
 writes `dist/_headers` — the CSP and other security headers (SECURITY.md) with `connect-src` taken
 from `VITE_API_URL`. See `scripts/cloudflarePages.ts`.
 
-One-time setup, once the domain is chosen and the backend is live at `https://api.<domain>`:
+One-time setup, once the backend is live at `https://api.revisor.aydev.in`:
 
 1. Cloudflare dashboard → Workers & Pages → Create → Pages → **Connect to Git** → this repository.
 2. Build settings:
@@ -50,12 +50,12 @@ One-time setup, once the domain is chosen and the backend is live at `https://ap
    | Build output directory | `dist` |
 
    Node comes from `frontend/.nvmrc`.
-3. Environment variables → **Production**: `VITE_API_URL` = `https://api.<domain>`. Set it for
+3. Environment variables → **Production**: `VITE_API_URL` = `https://api.revisor.aydev.in`. Set it for
    **Preview** too (the same value is fine), or preview builds fail the guard.
-4. Custom domains → add **`app.<domain>`** (a CNAME to the Pages project; automatic if the domain's
-   DNS is on Cloudflare). The backend's `.env` must list exactly this origin in
+4. Custom domains → add **`revisor.aydev.in`**. The domain's DNS is on Cloudflare, so Pages creates
+   the `revisor` CNAME itself. The backend's `.env` must list exactly this origin in
    `APP_CORS_ALLOWED_ORIGINS` (`deploy/README.md`).
-5. Push to `main`, open `https://app.<domain>` and sign up.
+5. Push to `main`, open `https://revisor.aydev.in` and sign up.
 
 Preview deployments (`*.pages.dev`) can't sign in — they're not on the custom domain, so the
 `SameSite=Strict` auth cookies are never sent and the API's CORS allowlist excludes them. They're

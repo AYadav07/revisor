@@ -58,6 +58,14 @@ services:
       JWT_PRIVATE_KEY_PATH: /run/secrets/jwt/jwt_private.pem
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt/jwt_public.pem
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:?set APP_CORS_ALLOWED_ORIGINS in .env}
+      # Transactional email over plain SMTP (DEPLOYMENT.md "Email delivery"): Resend today; another
+      # provider is new values in .env, not new code.
+      MAIL_HOST: ${MAIL_HOST:?set MAIL_HOST in .env}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:?set MAIL_USERNAME in .env}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?set MAIL_PASSWORD in .env}
+      APP_MAIL_FROM: ${APP_MAIL_FROM:?set APP_MAIL_FROM in .env}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL:?set APP_FRONTEND_URL in .env}
       # Bounded heap for the 1 GB host (DEPLOYMENT.md) — tune against measured usage. On OOM, exit and
       # let Docker restart the container rather than limp along.
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xmx384m -Xss256k -XX:+ExitOnOutOfMemoryError}

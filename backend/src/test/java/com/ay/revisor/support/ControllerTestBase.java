@@ -67,7 +67,7 @@ public abstract class ControllerTestBase {
 
     private TestUser withToken(Long id, String email, Role role, String timezone) {
         Instant now = clock.instant();
-        String token = accessTokenIssuer.issue(new UserResponse(id, "Test " + email, email, role, true, timezone, now), now);
+        String token = accessTokenIssuer.issue(new UserResponse(id, "Test " + email, email, role, true, timezone, now, true), now);
         return new TestUser(id, new Cookie("accessToken", token), email, role, timezone);
     }
 

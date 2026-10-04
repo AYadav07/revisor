@@ -38,7 +38,9 @@ class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(requests -> {
                     requests.requestMatchers(HttpMethod.POST, "/api/v1/auth/signup", "/api/v1/auth/login",
-                            "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll();
+                            "/api/v1/auth/refresh", "/api/v1/auth/logout", "/api/v1/auth/verify-email",
+                            "/api/v1/auth/resend-verification", "/api/v1/auth/forgot-password",
+                            "/api/v1/auth/reset-password").permitAll();
                     // Health checks are for the load balancer/orchestrator; nothing else is exposed (see management.* config).
                     requests.requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll();
                     if (apiDocsEnabled) {

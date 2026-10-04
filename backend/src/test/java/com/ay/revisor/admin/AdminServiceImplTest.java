@@ -151,6 +151,6 @@ class AdminServiceImplTest {
     }
 
     private static UserResponse userResponse(boolean enabled) {
-        return new UserResponse(TARGET_ID, "Ann", "ann@example.com", Role.USER, enabled, "UTC", NOW);
+        return new UserResponse(TARGET_ID, "Ann", "ann@example.com", Role.USER, enabled, "UTC", NOW, true);
     }
 }

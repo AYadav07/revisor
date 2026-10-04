@@ -65,6 +65,12 @@ export interface LoginRequest {
   password: string
 }
 
+export interface ResetPasswordRequest {
+  /** The opaque token from the emailed link. */
+  token: string
+  newPassword: string
+}
+
 // ---- Courses / topics / subtopics ----
 
 export interface CourseRequest {
@@ -189,6 +195,8 @@ export interface AdminUser {
   enabled: boolean
   timezone: string
   createdAt: string
+  /** False until the user clicks their verification link (or completes a password reset). */
+  emailVerified: boolean
 }
 
 export interface AdminUsersParams extends PageParams {
