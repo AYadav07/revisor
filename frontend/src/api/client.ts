@@ -164,7 +164,8 @@ async function toApiError(response: Response): Promise<ApiError> {
 }
 
 /**
- * Calls `/api/v1{path}` and returns the parsed JSON body (`undefined` for 204).
+ * Calls `/api/v1{path}` and returns the parsed JSON body (`undefined` when there is none: 204, and
+ * the bodiless 200/202 of e.g. verify-email and forgot-password).
  *
  * A 401 on any non-auth endpoint triggers one token refresh and one retry of the original
  * request. Auth endpoints are exempt: a 401 from `/auth/login` just means bad credentials.
@@ -183,8 +184,9 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   if (!response.ok) {
     throw await toApiError(response)
   }
-  if (response.status === 204) {
+  const text = await response.text()
+  if (text === '') {
     return undefined as T
   }
-  return (await response.json()) as T
+  return JSON.parse(text) as T
 }
