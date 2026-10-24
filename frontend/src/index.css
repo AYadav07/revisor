@@ -46,12 +46,17 @@
   /* Hero headers: the brand gradient, kept deep enough that white text reads on every stop. */
   --hero-from: 221 83% 48%;
   --hero-to: 256 68% 52%;
-  /* The sidebar is deep navy in both themes: the app's frame, and where its identity lives. */
-  --sidebar: 224 58% 14%;
-  --sidebar-foreground: 214 32% 91%;
-  --sidebar-muted-foreground: 217 20% 64%;
-  --sidebar-accent: 222 40% 22%;
-  --sidebar-border: 222 38% 22%;
+  /*
+   * The sidebar follows the theme: a white panel against the tinted canvas in light mode, a
+   * surface between canvas and card in dark mode — framed by a hairline border, not a block of
+   * color. `accent` is its hover/selected wash; the current page is marked in `primary`.
+   */
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 222 47% 11%;
+  --sidebar-muted-foreground: 215 16% 47%;
+  --sidebar-accent: 220 27% 95%;
+  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-border: 220 18% 90%;
 }
 
 :root[data-theme='dark'] {
@@ -81,11 +86,12 @@
   --brand-2: 256 80% 66%;
   --hero-from: 221 70% 36%;
   --hero-to: 256 52% 40%;
-  --sidebar: 225 55% 5%;
+  --sidebar: 224 45% 9%;
   --sidebar-foreground: 214 32% 91%;
-  --sidebar-muted-foreground: 217 20% 60%;
-  --sidebar-accent: 222 40% 14%;
-  --sidebar-border: 222 38% 14%;
+  --sidebar-muted-foreground: 217 20% 62%;
+  --sidebar-accent: 217 33% 15%;
+  --sidebar-accent-foreground: 210 40% 98%;
+  --sidebar-border: 217 30% 16%;
 }
 
 /* Maps the HSL-component variables above into Tailwind v4's utility namespace, so
@@ -121,6 +127,7 @@
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
   --color-sidebar-muted-foreground: hsl(var(--sidebar-muted-foreground));
   --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
   --color-sidebar-border: hsl(var(--sidebar-border));
 
   --radius-sm: calc(var(--radius) - 0.25rem);

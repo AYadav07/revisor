@@ -25,11 +25,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Link
           to={ROUTES.dashboard}
           onClick={onNavigate}
-          className="flex items-center gap-2.5 rounded-md text-lg font-semibold text-white outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="flex items-center gap-2.5 rounded-md text-lg font-semibold tracking-tight text-sidebar-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
           <span
             aria-hidden
-            className="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-primary to-brand-2 text-white shadow-md shadow-primary/30"
+            className="flex size-8 items-center justify-center rounded-lg bg-linear-to-br from-primary to-brand-2 text-white shadow-sm shadow-primary/30"
           >
             <Repeat2 className="size-5" />
           </span>
@@ -44,7 +44,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             key={to}
             asChild
             variant="ghost"
-            className="w-full justify-start gap-3 text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-white aria-[current=page]:bg-primary aria-[current=page]:text-white aria-[current=page]:shadow-md aria-[current=page]:shadow-primary/25"
+            className="w-full justify-start gap-3 text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground aria-[current=page]:bg-primary/10 aria-[current=page]:font-semibold aria-[current=page]:text-primary"
           >
             <NavLink
               to={to}
@@ -58,7 +58,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               {to === ROUTES.dashboard && dueNow > 0 && (
                 <span
                   aria-hidden
-                  // Amber: the "due" state color, and visible on both the navy and the active blue.
+                  // Amber: the "due" state color, readable on the sidebar and on the active item's tint.
                   className="ml-auto rounded-full bg-warning px-2 py-0.5 text-xs font-semibold text-warning-foreground tabular-nums"
                 >
                   {dueNow}

@@ -57,8 +57,13 @@ dark mode since both are defined as alternate values for the same variable names
 ```
 **Color in the structure** (revised again after feedback that the white panels still read as
 an unfinished template): color sits in the app's frame and headers, not only in small accents.
-- **Sidebar** — deep navy in both themes (`--sidebar*` tokens): light text, the active item a
-  solid `primary` pill, the due count an amber (`warning`) badge.
+- **Sidebar** — follows the theme (`--sidebar*` tokens): a white panel against the tinted
+  canvas in light mode, a surface between canvas and card in dark mode, separated from the
+  page by a hairline `--sidebar-border` rather than a block of color. The current page is a
+  soft `primary` tint with `primary` text; hover is the `--sidebar-accent` wash; the due
+  count stays an amber (`warning`) badge. The brand mark and the user's initial keep the
+  blue → violet gradient — that's where the identity lives. (Revised from a navy sidebar in
+  both themes, which clashed with the light canvas.)
 - **Hero headers** — the dashboard and course pages open on a blue → violet gradient band
   (`--hero-from` → `--hero-to`, deeper stops than `primary`/`--brand-2` so white text reads in
   both themes) with the `<h1>`, a line of context and the page's main actions in white.
