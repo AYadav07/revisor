@@ -128,6 +128,8 @@ signed in on that browser, since an emailed link is about the account it was sen
 handling (read once, strip from the URL, POST once) lives in `useLinkToken` (`features/auth/useEmailLinks.ts`).
 | `/courses` | Course list | `CourseCard`, `CreateCourseDialog`, `EmptyState` |
 | `/courses/:id` | Topic/subtopic tree for one course | `TopicAccordion`, `SubtopicRow`, `AddTopicForm` |
+| `/courses/import` | Import a new course from an outline (v2) | `OutlineEditor`, `OutlinePreview` |
+| `/courses/:id/outline` | Bulk-add to a course from an outline (v2) | `OutlineEditor`, `OutlinePreview`, `ConflictChoice` |
 | `/subtopics/:id/review` | Review-grading flow | `ReviewPrompt`, `QualityGradeButtons`, `RevealButton` |
 | `/dashboard` | Due today/week, progress | `DueList`, `ProgressBar`, `StatTile` |
 | `/admin/users` | Admin only, route-guarded | `UserTable`, `UserStatusBadge` |
@@ -161,6 +163,33 @@ initials and the name carry identity.
   buttons, each with a stripe on SM-2's pass/fail line (0–1 `destructive`, 2 `warning` — these
   reset the schedule — 3–5 `success`). **Keyboard:** Space reveals, 0–5 grades (ignored while
   typing or with a modifier held), with the keys hinted on screen.
+
+### Outline import, bulk add & export (v2 — PRD.md §8, format in ARCHITECTURE.md §9a)
+- **Entry points:** `/courses` gets an "Import course" button (outline variant) beside "New
+  course"; the `/courses/:id` side panel gets "Bulk add" (to `/courses/:id/outline`) under
+  "Add a topic", and an "Export outline" button beside "Edit course" in the course header.
+- **Layout (both pages):** a page, not a dialog — outlines get long. On `lg` and up, the
+  editor (left half) beside a live preview (right half); stacked below `lg`. The editor is a
+  monospace `Textarea` with a collapsible "Format" help showing the example from
+  ARCHITECTURE.md §9a and an "Insert example" button when it is empty. On import, the
+  course title comes from the `# ` line, with a regular title input pre-filled from it (so
+  an outline without `# ` still works).
+- **Preview:** the parsed tree, re-parsed as the user types (debounced ~300 ms). Each topic
+  and subtopic carries a `Badge`: **New** (`default`), **Existing** (`outline` — a topic
+  merged into an existing one, or a subtopic left alone), **Conflict** (`warning`).
+  Counts line at the top ("3 new topics, 24 new subtopics, 2 conflicts").
+- **Errors:** an `Alert` (`destructive`) above the preview lists each problem as "Line 12:
+  …"; clicking one moves the editor's cursor to that line. Save is disabled while there
+  are errors. Server-side validation errors (field paths) are mapped back to lines the
+  same way.
+- **Conflicts** (bulk add only): an `Alert` (`warning`) listing them with "Overwrite all" /
+  "Skip all"; each conflicting subtopic in the preview has a two-button `ConflictChoice`
+  (Skip — default — / Overwrite) and expands to show the current notes beside the new ones.
+- **Save:** one request; on success a toast with the server's summary ("Added 3 topics
+  and 24 subtopics, updated 1, skipped 2") and navigate to `/courses/:id`. Leaving the page
+  with unsaved text asks for confirmation (`ConfirmDialog`).
+- **Export:** "Export outline" opens a `Dialog` with the formatted outline in a read-only
+  monospace `Textarea`, plus "Copy" and "Download (.md)" buttons.
 
 `/courses/:id` fetches the whole tree in one `GET /courses/{id}` call (topics +
 subtopics nested — see API.md) and renders it directly into `TopicAccordion` /

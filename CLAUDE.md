@@ -42,6 +42,11 @@ domain events (ARCHITECTURE.md §8), so `auth` never depends on `notification` a
   endpoints use `@PreAuthorize("hasRole('ADMIN')")`, and every admin action writes to the
   `AdminAction` log.
 - **Subtopic delete is soft delete** (`deleted_at`) — all read queries filter it out.
+- **Bulk outline import (v2, PRD.md §8):** the frontend parses outline text
+  (`features/courses/outline.ts`); the API takes structured JSON only. Match/merge/conflict
+  rules live in the pure `OutlineMerger` (course module) and are authoritative — the
+  preview is advisory. The outline only adds (and overwrites notes on request); it never
+  renames, moves, deletes or marks learned.
 - **`/review` requires an existing `LearningRecord`** (created by `/learn`) — otherwise
   409, no implicit auto-learn.
 - Tokens are RS256 JWTs (access, 15 min) + opaque rotating refresh tokens (14 days,
