@@ -132,6 +132,41 @@ export interface CourseTree {
   topics: TopicTreeNode[]
 }
 
+// ---- Bulk outline import (API.md §Bulk outline import) ----
+
+/** What to do with an existing subtopic whose notes differ from the outline's. */
+export type OutlineConflictChoice = 'SKIP' | 'OVERWRITE'
+
+export interface OutlineSubtopicRequest {
+  title: string
+  notes: string | null
+  /** Ignored by course import; defaults to SKIP. */
+  onConflict?: OutlineConflictChoice
+}
+
+export interface OutlineTopicRequest {
+  title: string
+  subtopics: OutlineSubtopicRequest[]
+}
+
+export interface CourseImportRequest {
+  title: string
+  description: string | null
+  topics: OutlineTopicRequest[]
+}
+
+export interface OutlineRequest {
+  topics: OutlineTopicRequest[]
+}
+
+export interface OutlineResult {
+  topicsCreated: number
+  topicsMerged: number
+  subtopicsCreated: number
+  subtopicsUpdated: number
+  subtopicsSkipped: number
+}
+
 // ---- Learning & review ----
 
 /** 0 = Blackout … 5 = Perfect (UI_DESIGN.md §4). */

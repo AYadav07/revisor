@@ -18,6 +18,10 @@ import { DEFAULT_AUTHENTICATED_PATH, ROUTES } from '@/routes'
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })))
 const CoursesPage = lazy(() => import('@/features/courses/CoursesPage').then((m) => ({ default: m.CoursesPage })))
 const CourseDetailPage = lazy(() => import('@/features/courses/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })))
+const ImportCoursePage = lazy(() =>
+  import('@/features/courses/ImportCoursePage').then((m) => ({ default: m.ImportCoursePage })),
+)
+const BulkAddPage = lazy(() => import('@/features/courses/BulkAddPage').then((m) => ({ default: m.BulkAddPage })))
 const ReviewPage = lazy(() => import('@/features/review/ReviewPage').then((m) => ({ default: m.ReviewPage })))
 const UsersPage = lazy(() => import('@/features/admin/UsersPage').then((m) => ({ default: m.UsersPage })))
 
@@ -40,7 +44,9 @@ function App() {
           <Route element={<AppShell />}>
             <Route path={ROUTES.dashboard} element={<DashboardPage />} />
             <Route path={ROUTES.courses} element={<CoursesPage />} />
+            <Route path={ROUTES.courseImport} element={<ImportCoursePage />} />
             <Route path={ROUTES.courseDetail} element={<CourseDetailPage />} />
+            <Route path={ROUTES.courseOutline} element={<BulkAddPage />} />
             <Route path={ROUTES.review} element={<ReviewPage />} />
             <Route element={<RequireRole role="ADMIN" />}>
               <Route path={ROUTES.adminUsers} element={<UsersPage />} />

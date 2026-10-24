@@ -54,6 +54,7 @@ export function nextTopicOrderIndex(topics: readonly TopicTreeNode[]): number {
 export type TreeAction =
   | { type: 'editCourse' }
   | { type: 'deleteCourse' }
+  | { type: 'exportOutline' }
   | { type: 'addSubtopic'; topic: TopicTreeNode }
   | { type: 'renameTopic'; topic: TopicTreeNode }
   | { type: 'deleteTopic'; topic: TopicTreeNode }

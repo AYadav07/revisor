@@ -10,6 +10,8 @@ const alertVariants = cva(
         default: "bg-card text-card-foreground",
         destructive:
           "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 [&>svg]:text-current",
+        // Needs a decision, not an error: outline conflicts (UI_DESIGN.md §4).
+        warning: "border-warning bg-card text-card-foreground [&>svg]:text-warning",
       },
     },
     defaultVariants: {

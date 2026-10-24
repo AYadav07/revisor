@@ -13,6 +13,10 @@ export const ROUTES = {
   courses: '/courses',
   /** The route pattern, for the router. Use {@link courseDetailPath} to build a link. */
   courseDetail: '/courses/:id',
+  /** Import a new course from an outline. */
+  courseImport: '/courses/import',
+  /** The route pattern, for the router. Use {@link courseOutlinePath} to build a link. */
+  courseOutline: '/courses/:id/outline',
   /** The route pattern, for the router. Use {@link reviewPath} to build a link. */
   review: '/subtopics/:id/review',
   adminUsers: '/admin/users',
@@ -20,6 +24,11 @@ export const ROUTES = {
 
 export function courseDetailPath(id: number): string {
   return `/courses/${id}`
+}
+
+/** Bulk-add an outline to a course. */
+export function courseOutlinePath(courseId: number): string {
+  return `/courses/${courseId}/outline`
 }
 
 export function reviewPath(subtopicId: number): string {

@@ -174,7 +174,8 @@ initials and the name carry identity.
   ARCHITECTURE.md §9a and an "Insert example" button when it is empty. On import, the
   course title comes from the `# ` line, with a regular title input pre-filled from it (so
   an outline without `# ` still works).
-- **Preview:** the parsed tree, re-parsed as the user types (debounced ~300 ms). Each topic
+- **Preview:** the parsed tree, re-parsed as the user types (via `useDeferredValue`, so typing
+  stays smooth in a long outline). Each topic
   and subtopic carries a `Badge`: **New** (`default`), **Existing** (`outline` — a topic
   merged into an existing one, or a subtopic left alone), **Conflict** (`warning`).
   Counts line at the top ("3 new topics, 24 new subtopics, 2 conflicts").
@@ -186,8 +187,10 @@ initials and the name carry identity.
   "Skip all"; each conflicting subtopic in the preview has a two-button `ConflictChoice`
   (Skip — default — / Overwrite) and expands to show the current notes beside the new ones.
 - **Save:** one request; on success a toast with the server's summary ("Added 3 topics
-  and 24 subtopics, updated 1, skipped 2") and navigate to `/courses/:id`. Leaving the page
-  with unsaved text asks for confirmation (`ConfirmDialog`).
+  and 24 subtopics, updated 1, skipped 2") and navigate to `/courses/:id`. Closing or
+  reloading the tab with unsaved text asks the browser to confirm (`beforeunload`). In-app
+  navigation is not guarded: that needs React Router's data router (`useBlocker`), and the
+  app uses `<BrowserRouter>` — switching is a separate decision.
 - **Export:** "Export outline" opens a `Dialog` with the formatted outline in a read-only
   monospace `Textarea`, plus "Copy" and "Download (.md)" buttons.
 

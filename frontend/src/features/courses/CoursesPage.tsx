@@ -1,6 +1,6 @@
-import { BookOpen, Plus } from 'lucide-react'
+import { BookOpen, FileUp, Plus } from 'lucide-react'
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '@/components/EmptyState'
 import { LoadError } from '@/components/LoadError'
 import { PageHeader } from '@/components/PageHeader'
@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useProgress } from '@/features/dashboard/useDashboard'
 import { pageFromSearch } from '@/lib/pageParam'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
+import { ROUTES } from '@/routes'
 import { CourseCard } from './CourseCard'
 import { CreateCourseDialog } from './CreateCourseDialog'
 import { COURSES_PAGE_SIZE, useCourses } from './useCourses'
@@ -29,16 +30,24 @@ export function CoursesPage() {
     setSearchParams(next === 0 ? {} : { page: String(next + 1) })
   }
 
-  const createButton = (
-    <Button onClick={() => setCreating(true)}>
-      <Plus aria-hidden />
-      New course
-    </Button>
+  const createButtons = (
+    <div className="flex flex-wrap gap-2">
+      <Button asChild variant="outline">
+        <Link to={ROUTES.courseImport}>
+          <FileUp aria-hidden />
+          Import course
+        </Link>
+      </Button>
+      <Button onClick={() => setCreating(true)}>
+        <Plus aria-hidden />
+        New course
+      </Button>
+    </div>
   )
 
   return (
     <>
-      <PageHeader title="Courses" actions={data && data.totalElements > 0 ? createButton : undefined} />
+      <PageHeader title="Courses" actions={data && data.totalElements > 0 ? createButtons : undefined} />
 
       {isPending && (
         <div role="status" aria-label="Loading courses" className={GRID}>
@@ -56,8 +65,8 @@ export function CoursesPage() {
         <EmptyState
           icon={BookOpen}
           title="No courses yet"
-          description="Create your first course, then add the topics you want to revise."
-          action={createButton}
+          description="Create your first course, or import one from an outline of its topics."
+          action={createButtons}
         />
       )}
 
