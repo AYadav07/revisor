@@ -92,6 +92,12 @@ describe('request building', () => {
 
     await expect(apiFetch<void>('/courses/1', { method: 'DELETE' })).resolves.toBeUndefined()
   })
+
+  it.each([200, 202])('returns undefined for a %i with an empty body', async (status) => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status }))
+
+    await expect(apiFetch<void>('/auth/verify-email', { method: 'POST', body: { token: 't' } })).resolves.toBeUndefined()
+  })
 })
 
 describe('errors', () => {
