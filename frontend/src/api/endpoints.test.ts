@@ -100,6 +100,23 @@ const cases: Case[] = [
 
   // topics
   {
+    name: 'courseApi.importCourse',
+    call: () => courseApi.importCourse({ title: 'SD', description: null, topics: [{ title: 'Caching', subtopics: [] }] }),
+    method: 'POST',
+    path: '/courses/import',
+    body: { title: 'SD', description: null, topics: [{ title: 'Caching', subtopics: [] }] },
+  },
+  {
+    name: 'courseApi.applyOutline',
+    call: () =>
+      courseApi.applyOutline(7, {
+        topics: [{ title: 'Caching', subtopics: [{ title: 'LRU', notes: null, onConflict: 'OVERWRITE' }] }],
+      }),
+    method: 'POST',
+    path: '/courses/7/outline',
+    body: { topics: [{ title: 'Caching', subtopics: [{ title: 'LRU', notes: null, onConflict: 'OVERWRITE' }] }] },
+  },
+  {
     name: 'courseApi.createTopic',
     call: () => courseApi.createTopic(7, { title: 'Graphs', orderIndex: 1 }),
     method: 'POST',

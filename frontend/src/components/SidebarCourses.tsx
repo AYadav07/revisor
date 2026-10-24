@@ -15,7 +15,10 @@ export function SidebarCourses({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <section aria-labelledby="sidebar-courses" className="space-y-1">
-      <h2 id="sidebar-courses" className="px-3 pb-1 text-xs font-medium text-sidebar-muted-foreground">
+      <h2
+        id="sidebar-courses"
+        className="px-3 pb-1 text-xs font-semibold tracking-wider text-sidebar-muted-foreground uppercase"
+      >
         Your courses
       </h2>
 
@@ -36,10 +39,10 @@ export function SidebarCourses({ onNavigate }: { onNavigate?: () => void }) {
               <NavLink
                 to={courseDetailPath(course.courseId)}
                 onClick={onNavigate}
-                className="block rounded-md px-3 py-2 text-sm text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-white"
+                className="block rounded-md px-3 py-2 text-sm text-sidebar-foreground outline-none hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground"
               >
                 <span className="flex items-center gap-2.5">
-                  <CourseAvatar title={course.courseTitle} size="sm" className="bg-white/10 text-white" />
+                  <CourseAvatar title={course.courseTitle} size="sm" />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
                       <span className="truncate font-medium">{course.courseTitle}</span>
@@ -51,7 +54,7 @@ export function SidebarCourses({ onNavigate }: { onNavigate?: () => void }) {
                     <Progress
                       aria-hidden
                       value={percentLearned(course.learnedCount, course.totalCount)}
-                      className="mt-1.5 h-1 bg-white/10"
+                      className="mt-1.5 h-1 bg-sidebar-border"
                     />
                   </span>
                 </span>

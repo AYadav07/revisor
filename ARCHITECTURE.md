@@ -274,7 +274,9 @@ page-by-page layout, forms) lives in **UI_DESIGN.md** — read both before build
   /forgot-password              — request reset link
   /reset-password?token=…       — set new password
   /courses                    — course list
+  /courses/import             — import a new course from an outline (v2)
   /courses/:id                — topic tree for a course
+  /courses/:id/outline        — bulk-add topics/subtopics to a course from an outline (v2)
   /subtopics/:id/review        — review-grading flow
   /dashboard                   — due today/this week, progress
   /admin/users                 — admin only, route-guarded by role
@@ -298,6 +300,46 @@ page-by-page layout, forms) lives in **UI_DESIGN.md** — read both before build
   auth cookies to be sent (see SECURITY.md, DEPLOYMENT.md §Frontend for the same-site
   domain implication of this).
 
+## 9a. Bulk outline import & export (v2 — PRD.md §8)
+**Where the work happens.** The frontend owns the text format: a pure parser
+(`features/courses/outline.ts` — `parseOutline` / `formatOutline`, no React) turns text
+into a tree plus per-line errors, and the export formats the existing course tree back to
+text. The backend receives structured JSON (API.md §Bulk outline import) and owns the
+authoritative match/merge/conflict rules. Keeping text out of the API means the backend
+stays typed and validated, and the preview can point at the exact line of an error.
+
+**Outline format**
+```
+# System Design                  ← course title (import only; ignored when bulk-adding)
+> Prep for HLD rounds            ← "> " lines after the title: course description
+Caching                          ← unindented line: a topic
+  - Cache-aside vs write-through ← "- " line: a subtopic of the topic above
+  - Eviction policies
+      LRU, LFU, TTL trade-offs   ← indented deeper than its "- ": that subtopic's notes
+      - kept verbatim, bullets included
+Databases
+  - Sharding
+```
+- Blank lines are ignored, except between note lines of one subtopic, where they're kept
+  as paragraph breaks (trailing blank lines are trimmed).
+- Tabs count as 4 spaces. Within a topic, the indentation of its first `- ` line is the
+  subtopic level; deeper lines are notes (with their common indentation removed); an
+  indented line at subtopic level without `- ` is an error.
+- A subtopic before any topic, a blank title, or a title/notes over the API limits is an
+  error on that line. The same subtopic twice under one topic is an error on the second
+  occurrence; a topic repeated in the outline is merged in the preview.
+- `formatOutline` writes exactly this format (subtopics at 2 spaces, notes at 6), and
+  `parseOutline(formatOutline(tree))` returns the same tree — a unit-tested round trip.
+
+**Backend shape** (all in the `course` module — no new module, no new dependency):
+- `OutlineMerger` — a pure class like `SM2Calculator`: given the course's current
+  topics/subtopics and the request, it returns a plan (topics to create, subtopics to
+  create, notes to overwrite, counts). No Spring or JPA, unit-tested in isolation.
+- `CourseService.importCourse(userId, request)` and
+  `CourseService.applyOutline(userId, courseId, request)` — one `@Transactional` method
+  each; load the course by `findByIdAndUserId` (404 otherwise), run the merger, persist
+  the plan. Exposed by `CourseController`.
+
 ## 10. Tech stack
 - Backend: Spring Boot 4 (Java 25), Spring Data JPA, Spring Security, PostgreSQL, Flyway
 - Auth: Nimbus JOSE+JWT (RS256), BCrypt (via `spring-security-crypto`), Bucket4j (rate limiting)
@@ -320,12 +362,13 @@ page-by-page layout, forms) lives in **UI_DESIGN.md** — read both before build
 
 | Layer | Test type | Example |
 |---|---|---|
-| Pure logic (SM2Calculator, mappers, validators, token generation/hashing, ChannelRouter) | Unit, no Spring context | quality=4, ease=2.5 → assert new ease/interval; quality=2 → assert repetitions reset to 0; PASSWORD_RESET routes to [EMAIL] |
+| Pure logic (SM2Calculator, mappers, validators, token generation/hashing, ChannelRouter, OutlineMerger) | Unit, no Spring context | quality=4, ease=2.5 → assert new ease/interval; quality=2 → assert repetitions reset to 0; PASSWORD_RESET routes to [EMAIL]; "caching" merges into "Caching"; differing notes + SKIP → untouched |
 | Services (ownership rules, review-gating, token lifecycle) | Unit, mocked repositories | Review on never-learned subtopic → exception; repeat `/learn` call → no-op, not a new record; expired/used token → invalid-token; reset revokes all refresh tokens; new token invalidates older one |
 | Repositories (ownership + dashboard queries, token redemption) | Integration, Testcontainers (real Postgres) | Confirms actual SQL/index behavior; concurrent redemption of one token succeeds once |
 | Notification delivery | Integration, GreenMail SMTP server | Signup commit → exactly one email to the right address containing a link; rollback → no email; template renders |
 | Controllers | Integration (MockMvc / full context) | Happy path + auth-required + 404-not-403; unverified login → 403 email-not-verified; forgot-password on unknown email → 202 |
-| Frontend components/hooks | React Testing Library | Review-grading flow submits correct quality value; verify-email page posts token from URL |
+| Frontend components/hooks | React Testing Library | Review-grading flow submits correct quality value; verify-email page posts token from URL; outline preview flags a conflict and sends the chosen `onConflict` |
+| Frontend pure logic (outline parser/formatter) | Vitest unit | Errors carry line numbers; `parseOutline(formatOutline(tree))` round-trips |
 
 "Done" per milestone = pure logic has unit tests, each new endpoint has at least one
 integration test (happy path + main failure mode).

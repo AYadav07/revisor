@@ -20,7 +20,15 @@ export const subtopicSchema = z.object({
   notes: z.string().trim().max(10000, 'Notes must be at most 10000 characters'),
 })
 
+/**
+ * The outline pages' form. The outline text itself is checked by `parseOutline` (errors point at
+ * lines), not here; bulk add has no title field, so the title is only required on import.
+ */
+export const bulkAddSchema = z.object({ title: z.string(), outline: z.string() })
+export const importCourseSchema = bulkAddSchema.extend({ title })
+
 export type CourseValues = z.infer<typeof courseSchema>
+export type OutlineFormValues = z.infer<typeof bulkAddSchema>
 export type TopicValues = z.infer<typeof topicSchema>
 export type SubtopicValues = z.infer<typeof subtopicSchema>
 

@@ -1,6 +1,9 @@
 import { apiFetch } from './client'
 import type {
+  CourseImportRequest,
   CourseRequest,
+  OutlineRequest,
+  OutlineResult,
   CourseResponse,
   CourseTree,
   PageParams,
@@ -24,6 +27,14 @@ export const courseApi = {
 
   createCourse: (body: CourseRequest) =>
     apiFetch<CourseResponse>('/courses', { method: 'POST', body }),
+
+  /** 201 with the new course's whole tree. All or nothing. */
+  importCourse: (body: CourseImportRequest) =>
+    apiFetch<CourseTree>('/courses/import', { method: 'POST', body }),
+
+  /** Adds an outline to a course, merging topics by title. All or nothing. */
+  applyOutline: (courseId: number, body: OutlineRequest) =>
+    apiFetch<OutlineResult>(`/courses/${courseId}/outline`, { method: 'POST', body }),
 
   updateCourse: (id: number, body: CourseRequest) =>
     apiFetch<CourseResponse>(`/courses/${id}`, { method: 'PUT', body }),

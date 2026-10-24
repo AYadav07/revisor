@@ -132,6 +132,49 @@ Soft-deleted topics/subtopics (`deleted_at IS NOT NULL`) are excluded from this 
 No separate `GET /courses/{id}/topics` or `GET /topics/{id}/subtopics` list endpoints —
 the nested response is the only way the tree is fetched.
 
+### Bulk outline import (v2 — PRD.md §8)
+The frontend parses the user's plain-text outline (format: ARCHITECTURE.md §9a) and sends
+it as structured JSON; the backend never sees outline text. Both endpoints run in one
+transaction — they save everything or nothing.
+```
+POST   /api/v1/courses/import
+       { title, description,
+         topics: [{ title, subtopics: [{ title, notes }] }] }
+       -> 201, body = the new course's tree (same shape as GET /courses/{id})
+
+POST   /api/v1/courses/{id}/outline
+       { topics: [{ title, subtopics: [{ title, notes, onConflict: "SKIP" | "OVERWRITE" }] }] }
+       -> 200 { topicsCreated, topicsMerged, subtopicsCreated, subtopicsUpdated, subtopicsSkipped }
+       -> 404 if the course doesn't exist or isn't the caller's
+```
+**Matching** — titles are compared trimmed and case-insensitively; soft-deleted topics and
+subtopics never match (a match against a deleted one creates a new row).
+- A topic matching an existing topic of the course is **merged**: its subtopics are added
+  to that topic, and the existing title is kept. A topic repeated within the request is
+  merged the same way.
+- A subtopic matching an existing subtopic of the (merged) topic:
+  - incoming `notes` blank, or equal to the existing notes (trimmed) → left alone,
+    counted in `subtopicsSkipped`;
+  - otherwise it is a **conflict**, resolved by its `onConflict` (default `SKIP`):
+    `OVERWRITE` replaces the notes only (`subtopicsUpdated`) — title, learning record and
+    schedule are untouched; `SKIP` leaves it alone (`subtopicsSkipped`).
+- The server does its own matching against the current data; the frontend's preview is
+  advisory, so a race with another tab can't produce a duplicate.
+- `onConflict` is ignored by `/import` (a new course has nothing to conflict with).
+
+**Ordering** — new topics are appended after the course's existing ones (`orderIndex`
+continues from the current maximum) in request order; new subtopics are created in request
+order.
+
+**Validation** (`400 validation-failed`, field paths like `topics[2].subtopics[0].title`):
+course/topic/subtopic `title` `@NotBlank @Size(max = 255)`, `description` max 2000,
+`notes` max 10000 (same as the single-item endpoints); `topics` 1–100 entries; at most
+1000 subtopics in the whole request; a topic may have zero subtopics; the same subtopic
+title twice under one topic in the request (after merging repeated topics) is rejected.
+
+**Export** has no endpoint: the frontend formats the `GET /courses/{id}` tree (which
+already carries notes) as an outline.
+
 Topic reordering (persisting drag-and-drop changes to `order_index`) is not yet in
 scope — deferred until the frontend actually needs it; `PUT /topics/{id}` can carry an
 updated `orderIndex` in the meantime if a one-off reorder is needed.

@@ -1,5 +1,5 @@
 import { CourseAvatar } from '@/components/CourseAvatar'
-import { ArrowLeft, ListTree, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, FileDown, ListPlus, ListTree, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ContentLoading } from '@/components/ContentLoading'
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { parseIdParam } from '@/lib/ids'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
-import { ROUTES } from '@/routes'
+import { courseOutlinePath, ROUTES } from '@/routes'
 import { AddSubtopicDialog } from './AddSubtopicDialog'
 import { AddTopicForm } from './AddTopicForm'
 import { nextTopicOrderIndex, type TreeAction } from './courseTree'
@@ -18,6 +18,7 @@ import { CourseSummary } from './CourseSummary'
 import { DeleteCourseDialog, DeleteSubtopicDialog, DeleteTopicDialog } from './DeleteDialogs'
 import { EditCourseDialog } from './EditCourseDialog'
 import { EditSubtopicDialog } from './EditSubtopicDialog'
+import { ExportOutlineDialog } from './ExportOutlineDialog'
 import { RenameTopicDialog } from './RenameTopicDialog'
 import { TopicAccordion } from './TopicAccordion'
 import { isCourseNotFound, useCourseTree } from './useCourseTree'
@@ -76,7 +77,11 @@ export function CourseDetailPage() {
             title={tree.title}
             description={tree.description}
             actions={
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className={HERO_BUTTON} onClick={() => setAction({ type: 'exportOutline' })}>
+                  <FileDown aria-hidden />
+                  Export outline
+                </Button>
                 <Button variant="outline" size="sm" className={HERO_BUTTON} onClick={() => setAction({ type: 'editCourse' })}>
                   <Pencil aria-hidden />
                   Edit course
@@ -104,8 +109,14 @@ export function CourseDetailPage() {
                 <CardHeader>
                   <CardTitle>Add a topic</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
                   <AddTopicForm courseId={tree.id} nextOrderIndex={nextTopicOrderIndex(tree.topics)} />
+                  <Button asChild variant="outline" className="w-full">
+                    <Link to={courseOutlinePath(tree.id)}>
+                      <ListPlus aria-hidden />
+                      Bulk add from an outline
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             </aside>
@@ -138,6 +149,7 @@ export function CourseDetailPage() {
           />
           <EditCourseDialog courseId={tree.id} course={action?.type === 'editCourse' ? tree : null} onClose={closeAction} />
           <DeleteCourseDialog course={tree} open={action?.type === 'deleteCourse'} onClose={closeAction} />
+          <ExportOutlineDialog course={tree} open={action?.type === 'exportOutline'} onClose={closeAction} />
         </>
       )}
     </>

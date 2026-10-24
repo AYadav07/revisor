@@ -1,4 +1,4 @@
-# Revisor — Product Requirements Doc (v1)
+# Revisor — Product Requirements Doc (v1, v2 in §8)
 
 ## 1. Problem
 Preparing for interviews (DSA, system design, core CS, company-specific rounds) involves
@@ -77,3 +77,38 @@ scheduling logic — topics get forgotten or revised too late/too early.
 - Email change flow with re-verification
 - Due-review reminder/digest emails
 - Topic/subtopic drag-and-drop reorder persistence
+- Bulk "mark as learned" (e.g. while importing an outline) — learning is tied to a date
+  and seeds the SM-2 schedule, so it needs its own design rather than riding on import
+
+## 8. V2: bulk outline import & export
+Adding a course one topic and one subtopic at a time is slow when the material already
+exists as a syllabus, a markdown list or notes. V2 lets the user write (or paste) a
+plain-text **outline**, preview it as a tree, and save it in one go.
+
+**Goals**
+- **Import a course:** create a new course with all its topics, subtopics and notes from
+  one outline.
+- **Bulk add to a course:** add topics and subtopics to an existing course from an
+  outline. A topic whose title matches an existing one (case-insensitively) is merged
+  into it, not duplicated.
+- **Conflicts are the user's call:** a subtopic that already exists under that topic is
+  left alone when the outline brings no new notes; when its notes differ, the preview
+  flags it and the user picks Overwrite or Skip per subtopic (or for all). Overwrite
+  replaces the notes only — learning progress and the review schedule are untouched.
+- **Notes included:** lines indented under a subtopic become its notes.
+- **Export a course as an outline** in the same format (copy or download), so a course
+  can be backed up, edited elsewhere and re-imported.
+- All-or-nothing: an import or bulk add either saves entirely or not at all.
+
+**Non-goals for v2**
+- The outline only adds and updates notes — it never renames, moves or deletes anything.
+- No marking as learned from the outline (see §7).
+- No other import formats (CSV, JSON upload, other apps' exports).
+
+**Milestones**
+13. Docs: outline format, endpoints, merge/conflict rules, pages (this section, API.md,
+    ARCHITECTURE.md §9a, Ui design.md)
+14. Backend: `POST /courses/import` and `POST /courses/{id}/outline` in the `course`
+    module, with a pure `OutlineMerger` for the match/merge/conflict rules
+15. Frontend: outline parser/formatter, import and bulk-add pages with live preview and
+    conflict choices, export from the course page
