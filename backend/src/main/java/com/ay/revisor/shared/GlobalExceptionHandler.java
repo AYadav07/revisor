@@ -79,6 +79,16 @@ class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problem, headers, status, request);
     }
 
+    @ExceptionHandler(InvalidFieldsException.class)
+    ResponseEntity<Object> handleInvalidFields(InvalidFieldsException ex, WebRequest request) {
+        ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "validation-failed", "Validation failed",
+                "One or more fields are invalid");
+        problem.setProperty("errors", ex.getProblems().stream()
+                .map(error -> Map.of("field", error.field(), "message", error.message()))
+                .toList());
+        return handleExceptionInternal(ex, problem, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+
     /** Constraint violations on query/path parameters, e.g. {@code @Max} on {@code size}. */
     @Override
     protected ResponseEntity<Object> handleHandlerMethodValidationException(HandlerMethodValidationException ex,

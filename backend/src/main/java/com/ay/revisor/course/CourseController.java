@@ -43,6 +43,25 @@ class CourseController {
         return courseService.createCourse(user.id(), request);
     }
 
+    @Operation(summary = "Import a course from an outline",
+            description = "Creates the course with all its topics, subtopics and notes in one transaction, and returns its tree.")
+    @PostMapping("/import")
+    @ResponseStatus(HttpStatus.CREATED)
+    CourseTreeResponse importCourse(@AuthenticationPrincipal AuthenticatedUser user,
+                                    @Valid @RequestBody CourseImportRequest request) {
+        CourseResponse course = courseService.importCourse(user.id(), request);
+        return treeAssembler.assemble(user.id(), course.id());
+    }
+
+    @Operation(summary = "Bulk-add an outline to a course",
+            description = "Topics merge into existing ones by title (case-insensitive). A subtopic that already exists is "
+                    + "left alone unless its notes differ and onConflict is OVERWRITE. All or nothing.")
+    @PostMapping("/{id}/outline")
+    OutlineResult applyOutline(@AuthenticationPrincipal AuthenticatedUser user, @PathVariable Long id,
+                               @Valid @RequestBody OutlineRequest request) {
+        return courseService.applyOutline(user.id(), id, request);
+    }
+
     @Operation(summary = "List courses", description = "Paginated, oldest first.")
     @GetMapping
     PageResponse<CourseResponse> list(@AuthenticationPrincipal AuthenticatedUser user,

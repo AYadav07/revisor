@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -62,6 +63,52 @@ class CourseServiceImpl implements CourseService {
                 .toList();
 
         return new CourseDetailResponse(course.getId(), course.getTitle(), course.getDescription(), topicNodes);
+    }
+
+    @Override
+    public CourseResponse importCourse(Long userId, CourseImportRequest request) {
+        OutlineMerger.Plan plan = OutlineMerger.plan(List.of(), request.topics());
+        Course course = courseRepository.save(new Course(userId, request.title().strip(), request.description()));
+        writePlan(userId, course.getId(), plan);
+        return mapper.toResponse(course);
+    }
+
+    @Override
+    public OutlineResult applyOutline(Long userId, Long courseId, OutlineRequest request) {
+        findOwnedCourse(userId, courseId);
+        List<Topic> topics = topicRepository
+                .findAllByCourseIdAndUserIdAndDeletedAtIsNullOrderByOrderIndexAsc(courseId, userId);
+        Map<Long, List<SubtopicNode>> subtopicsByTopicId = loadSubtopicsByTopicId(userId, topics);
+        List<TopicNode> existing = topics.stream()
+                .map(topic -> new TopicNode(topic.getId(), topic.getTitle(), topic.getOrderIndex(),
+                        subtopicsByTopicId.getOrDefault(topic.getId(), List.of())))
+                .toList();
+
+        OutlineMerger.Plan plan = OutlineMerger.plan(existing, request.topics());
+        writePlan(userId, courseId, plan);
+        return plan.result();
+    }
+
+    private void writePlan(Long userId, Long courseId, OutlineMerger.Plan plan) {
+        List<Subtopic> newSubtopics = new ArrayList<>();
+        for (OutlineMerger.TopicPlan topicPlan : plan.topics()) {
+            Long topicId = topicPlan.existingTopicId();
+            if (topicId == null) {
+                topicId = topicRepository.save(new Topic(courseId, userId, topicPlan.title(), topicPlan.orderIndex())).getId();
+            }
+            for (OutlineMerger.NewSubtopic subtopic : topicPlan.newSubtopics()) {
+                newSubtopics.add(new Subtopic(topicId, userId, subtopic.title(), subtopic.notes()));
+            }
+        }
+        // Saved in outline order: subtopics are listed by id, so this is also their display order.
+        subtopicRepository.saveAll(newSubtopics);
+
+        if (!plan.notesUpdates().isEmpty()) {
+            Map<Long, String> notesById = plan.notesUpdates().stream()
+                    .collect(Collectors.toMap(OutlineMerger.NotesUpdate::subtopicId, OutlineMerger.NotesUpdate::notes));
+            subtopicRepository.findAllByIdInAndUserIdAndDeletedAtIsNull(notesById.keySet(), userId)
+                    .forEach(subtopic -> subtopic.setNotes(notesById.get(subtopic.getId())));
+        }
     }
 
     @Override

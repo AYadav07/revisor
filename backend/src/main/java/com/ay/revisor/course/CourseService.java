@@ -20,6 +20,12 @@ public interface CourseService {
 
     CourseDetailResponse getCourseDetail(Long userId, Long courseId);
 
+    /** Creates a course with its whole tree from an outline, in one transaction (API.md §Bulk outline import). */
+    CourseResponse importCourse(Long userId, CourseImportRequest request);
+
+    /** Adds an outline's topics and subtopics to an existing course, merging by title (see {@link OutlineMerger}). */
+    OutlineResult applyOutline(Long userId, Long courseId, OutlineRequest request);
+
     CourseResponse updateCourse(Long userId, Long courseId, CourseRequest request);
 
     void deleteCourse(Long userId, Long courseId);
